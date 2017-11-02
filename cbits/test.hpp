@@ -5,7 +5,6 @@
 extern "C" {
 #endif  // __cplusplus
 
-int x = 5;
 int Start_code(int y);
 
 #ifdef __cplusplus
