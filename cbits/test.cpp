@@ -30,29 +30,31 @@
 
 
 // main entry point
-// int main( int argc, char** argv )
-int start_code( int argc, char** argv )
+// int main( int argc, y )
+int Start_code(int y)
 {
-	printf("imagenet-console\n  args (%i):  ", argc);
+	// printf("imagenet-console\n  args (%i):  ", argc);
 	
-	for( int i=0; i < argc; i++ )
-		printf("%i [%s]  ", i, argv[i]);
+	// for( int i=0; i < argc; i++ )
+	// 	printf("%i [%s]  ", i, argv[i]);
 		
-	printf("\n\n");
+	// printf("\n\n");
 	
 	
-	// retrieve filename argument
-	if( argc < 2 )
-	{
-		printf("imagenet-console:   input image filename required\n");
-		return 0;
-	}
+	// // retrieve filename argument
+	// if( argc < 2 )
+	// {
+	// 	printf("imagenet-console:   input image filename required\n");
+	// 	return 0;
+	// }
 	
-	const char* imgFilename = argv[1];
-	
+	const char* imgFilename = "./Orange.jpg";
 
+	const char *a[2];
+	a[0] = "blah";
+	a[1] = "hmm";
 	// create imageNet
-	imageNet* net = imageNet::Create(argc, argv);
+	imageNet* net = imageNet::Create(1, a);
 
 	if( !net )
 	{
