@@ -23,9 +23,9 @@
 #ifndef __CUDA_OVERLAY_H__
 #define __CUDA_OVERLAY_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif  // __cplusplus
+// #ifdef __cplusplus
+// extern "C" {
+// #endif  // __cplusplus
 
 #include "cudaUtility.h"
 
@@ -44,8 +44,8 @@ cudaError_t cudaRectOutlineOverlay( float4* input, float4* output, uint32_t widt
 //cudaError_t cudaRectFillOverlay( float4* input, float4* output, uint32_t width, uint32_t height, float4* boundingBoxes, int numBoxes, const float4& color );
 
 
-#ifdef __cplusplus
-}
-#endif  // __cplusplus
+// #ifdef __cplusplus
+// }
+// #endif  // __cplusplus
 
 #endif

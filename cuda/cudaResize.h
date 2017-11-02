@@ -23,9 +23,9 @@
 #ifndef __CUDA_RESIZE_H__
 #define __CUDA_RESIZE_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif  // __cplusplus
+// #ifdef __cplusplus
+// extern "C" {
+// #endif  // __cplusplus
 
 #include "cudaUtility.h"
 
@@ -46,9 +46,9 @@ cudaError_t cudaResizeRGBA( float4* input,  size_t inputWidth,  size_t inputHeig
 				        float4* output, size_t outputWidth, size_t outputHeight );
 
 
-#ifdef __cplusplus
-}
-#endif  // __cplusplus
+// #ifdef __cplusplus
+// }
+// #endif  // __cplusplus
 						
 
 #endif

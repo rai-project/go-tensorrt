@@ -21,9 +21,12 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include "imageNet.h"
-#include "loadImage.h"
+#include "test.hpp"
 
+#include "imageNet.hpp"
+// #include "cbits/util/loadImage.hpp"
+// #include "imageNet.h"
+#include "loadImage.hpp"
 
 
 // main entry point

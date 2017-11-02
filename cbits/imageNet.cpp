@@ -20,12 +20,14 @@
  * DEALINGS IN THE SOFTWARE.
  */
  
-#include "imageNet.h"
+#include "imageNet.hpp"
 #include "cudaMappedMemory.h"
 #include "cudaResize.h"
 #include "commandLine.h"
 #include "cudaUtility.h"
 
+#include "tensorNet.hpp"
+#include "imageNetGpu.h"
 
 // constructor
 imageNet::imageNet() : tensorNet()

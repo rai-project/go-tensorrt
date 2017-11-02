@@ -23,9 +23,9 @@
 #ifndef __CUDA_UTILITY_H_
 #define __CUDA_UTILITY_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif  // __cplusplus
+// #ifdef __cplusplus
+// extern "C" {
+// #endif  // __cplusplus
 
 #include <cuda_runtime.h>
 #include <cuda.h>
@@ -107,8 +107,8 @@ inline cudaError_t cudaCheckError(cudaError_t retval, const char* txt, const cha
 inline __device__ __host__ int iDivUp( int a, int b )  		{ return (a % b != 0) ? (a / b + 1) : (a / b); }
 
 
-#ifdef __cplusplus
-}
-#endif  // __cplusplus
+// #ifdef __cplusplus
+// }
+// #endif  // __cplusplus
 
 #endif

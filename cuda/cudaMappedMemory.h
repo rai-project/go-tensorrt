@@ -23,9 +23,9 @@
 #ifndef __CUDA_MAPPED_MEMORY_H_
 #define __CUDA_MAPPED_MEMORY_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif  // __cplusplus
+// #ifdef __cplusplus
+// extern "C" {
+// #endif  // __cplusplus
 
 #include "cudaUtility.h"
 
@@ -52,8 +52,8 @@ inline bool cudaAllocMapped( void** cpuPtr, void** gpuPtr, size_t size )
 	return true;
 }
 
-#ifdef __cplusplus
-}
-#endif  // __cplusplus
+// #ifdef __cplusplus
+// }
+// #endif  // __cplusplus
 
 #endif
