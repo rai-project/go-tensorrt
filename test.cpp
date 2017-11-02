@@ -29,6 +29,14 @@
 #include "loadImage.hpp"
 
 
+#include "imageNet.cpp"
+#include "tensorNet.cpp"
+#include "commandLine.cpp"
+#include "loadImage.cpp"
+
+
+
+
 // main entry point
 // int main( int argc, y )
 int Start_code(int y)
@@ -50,7 +58,7 @@ int Start_code(int y)
 	
 	const char* imgFilename = "./Orange.jpg";
 
-	const char *a[2];
+	 char *a[2];
 	a[0] = "blah";
 	a[1] = "hmm";
 	// create imageNet

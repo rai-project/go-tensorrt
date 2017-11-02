@@ -1,2 +1,4 @@
 build/*
 networks/*
+*.o
+*.so
