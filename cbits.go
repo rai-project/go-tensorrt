@@ -1,13 +1,14 @@
-package tensorrt
+package main
 
-// #include "test.hpp"
+// #include "cbits/test.hpp"
 import "C"
 import (
 	"fmt"
 )
 
 func main() {
-	fmt.Printf("Hello, word. \n")
+	y := int(C.Start_code(C.int(5)))
+	fmt.Printf("Hello, word. %d\n", y)
 }
 
 // type Device int
