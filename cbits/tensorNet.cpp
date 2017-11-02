@@ -20,7 +20,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
  
-#include "tensorNet.h"
+#include "tensorNet.hpp"
 #include "cudaMappedMemory.h"
 #include "cudaResize.h"
 

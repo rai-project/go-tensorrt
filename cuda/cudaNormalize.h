@@ -24,9 +24,9 @@
 #define __CUDA_NORMALIZE_H__
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif  // __cplusplus
+// #ifdef __cplusplus
+// extern "C" {
+// #endif  // __cplusplus
 
 #include "cudaUtility.h"
 
@@ -40,9 +40,9 @@ cudaError_t cudaNormalizeRGBA( float4* input,  const float2& input_range,
 						 float4* output, const float2& output_range,
 						 size_t  width,  size_t height );
 
-#ifdef __cplusplus
-}
-#endif  // __cplusplus
+// #ifdef __cplusplus
+// }
+// #endif  // __cplusplus
 
 #endif
 

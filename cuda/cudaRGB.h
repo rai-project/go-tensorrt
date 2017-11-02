@@ -23,9 +23,9 @@
 #ifndef __CUDA_RGB_CONVERT_H
 #define __CUDA_RGB_CONVERT_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif  // __cplusplus
+// #ifdef __cplusplus
+// extern "C" {
+// #endif  // __cplusplus
 
 #include "cudaUtility.h"
 #include <stdint.h>
@@ -37,8 +37,8 @@ extern "C" {
  */
 cudaError_t cudaRGBToRGBAf( uchar3* input, float4* output, size_t width, size_t height );
 
-#ifdef __cplusplus
-}
-#endif  // __cplusplus
+// #ifdef __cplusplus
+// }
+// #endif  // __cplusplus
 
 #endif

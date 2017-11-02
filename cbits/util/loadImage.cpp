@@ -20,7 +20,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
  
-#include "loadImage.h"
+#include "loadImage.hpp"
 #include "cudaMappedMemory.h"
 
 #include <QImage>

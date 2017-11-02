@@ -3,8 +3,8 @@ CXX := nvcc # This is the main compiler
 LDFLAGS := -lnvinfer -lnvcaffe_parser -lQtCore -lQtGui -Lcuda -lcudaUtil
 SRCDIR := cbits
 BUILDDIR := build
-CXXFLAGS := -std=c++11 -I${SRCDIR} -I${SRCDIR}/util -I${SRCDIR}/util/cuda -O3 -I/usr/include/qt4/QtGui -I/usr/include/qt4/QtCore -I/usr/include/qt4 -Icuda
-TARGETA := test2
+CXXFLAGS := -std=c++11 -I${SRCDIR} -I${SRCDIR}/util -O3 -I/usr/include/qt4/QtGui -I/usr/include/qt4/QtCore -I/usr/include/qt4 -Icuda
+TARGETA := test22
 SRCEXT := cpp
 SOURCES := $(shell find $(SRCDIR) -type f -name "*.$(SRCEXT)")
 OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o))
