@@ -23,8 +23,12 @@
 #ifndef __IMAGE_NET_H__
 #define __IMAGE_NET_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif  // __cplusplus
 
 #include "tensorNet.h"
+#include "imageNetGpu.h"
 
 
 /**
@@ -138,5 +142,8 @@ protected:
 	NetworkType mNetworkType;
 };
 
+#ifdef __cplusplus
+}
+#endif  // __cplusplus
 
 #endif

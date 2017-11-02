@@ -20,34 +20,36 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef __CUDA_MAPPED_MEMORY_H_
-#define __CUDA_MAPPED_MEMORY_H_
+#ifndef __CUDA_RESIZE_H__
+#define __CUDA_RESIZE_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif  // __cplusplus
 
 #include "cudaUtility.h"
 
 
 /**
- * Allocate ZeroCopy mapped memory, shared between CUDA and CPU.
+ * Function for increasing or decreasing the size of an image on the GPU.
  * @ingroup util
  */
-inline bool cudaAllocMapped( void** cpuPtr, void** gpuPtr, size_t size )
-{
-	if( !cpuPtr || !gpuPtr || size == 0 )
-		return false;
+cudaError_t cudaResize( float* input,  size_t inputWidth,  size_t inputHeight,
+				    float* output, size_t outputWidth, size_t outputHeight );
 
-	//CUDA(cudaSetDeviceFlags(cudaDeviceMapHost));
 
-	if( CUDA_FAILED(cudaHostAlloc(cpuPtr, size, cudaHostAllocMapped)) )
-		return false;
+/**
+ * Function for increasing or decreasing the size of an image on the GPU.
+ * @ingroup util
+ */
+cudaError_t cudaResizeRGBA( float4* input,  size_t inputWidth,  size_t inputHeight,
+				        float4* output, size_t outputWidth, size_t outputHeight );
 
-	if( CUDA_FAILED(cudaHostGetDevicePointer(gpuPtr, *cpuPtr, 0)) )
-		return false;
 
-	memset(*cpuPtr, 0, size);
-	printf("[cuda]  cudaAllocMapped %zu bytes, CPU %p GPU %p\n", size, *cpuPtr, *gpuPtr);
-	return true;
+#ifdef __cplusplus
 }
-
+#endif  // __cplusplus
+						
 
 #endif
+

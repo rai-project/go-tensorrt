@@ -20,21 +20,40 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef __CUDA_NORMALIZE_H__
-#define __CUDA_NORMALIZE_H__
+#ifndef __CUDA_MAPPED_MEMORY_H_
+#define __CUDA_MAPPED_MEMORY_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif  // __cplusplus
 
 #include "cudaUtility.h"
 
 
 /**
- * Rebase the pixel intensities of an image between two scales.
- * For example, convert an image with values 0.0-255 to 0.0-1.0.
+ * Allocate ZeroCopy mapped memory, shared between CUDA and CPU.
  * @ingroup util
  */
-cudaError_t cudaNormalizeRGBA( float4* input,  const float2& input_range,
-						 float4* output, const float2& output_range,
-						 size_t  width,  size_t height );
+inline bool cudaAllocMapped( void** cpuPtr, void** gpuPtr, size_t size )
+{
+	if( !cpuPtr || !gpuPtr || size == 0 )
+		return false;
+
+	//CUDA(cudaSetDeviceFlags(cudaDeviceMapHost));
+
+	if( CUDA_FAILED(cudaHostAlloc(cpuPtr, size, cudaHostAllocMapped)) )
+		return false;
+
+	if( CUDA_FAILED(cudaHostGetDevicePointer(gpuPtr, *cpuPtr, 0)) )
+		return false;
+
+	memset(*cpuPtr, 0, size);
+	printf("[cuda]  cudaAllocMapped %zu bytes, CPU %p GPU %p\n", size, *cpuPtr, *gpuPtr);
+	return true;
+}
+
+#ifdef __cplusplus
+}
+#endif  // __cplusplus
 
 #endif
-

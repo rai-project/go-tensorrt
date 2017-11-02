@@ -23,6 +23,9 @@
 #ifndef __CUDA_YUV_CONVERT_H
 #define __CUDA_YUV_CONVERT_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif  // __cplusplus
 
 #include "cudaUtility.h"
 #include <stdint.h>
@@ -145,6 +148,10 @@ cudaError_t cudaNV12ToRGBAf( uint8_t* input, float4* output, size_t width, size_
 cudaError_t cudaNV12SetupColorspace( float hue = 0.0f ); 
 
 ///@}
+
+#ifdef __cplusplus
+}
+#endif  // __cplusplus
 
 #endif
 

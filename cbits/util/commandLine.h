@@ -23,6 +23,9 @@
 #ifndef __COMMAND_LINE_H_
 #define __COMMAND_LINE_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif  // __cplusplus
 
 /**
  * commandLine parser class
@@ -86,6 +89,9 @@ protected:
 };
 
 
+#ifdef __cplusplus
+}
+#endif  // __cplusplus
 
 #endif
 
