@@ -20,30 +20,29 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef __CUDA_RESIZE_H__
-#define __CUDA_RESIZE_H__
+#ifndef __CUDA_NORMALIZE_H__
+#define __CUDA_NORMALIZE_H__
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif  // __cplusplus
 
 #include "cudaUtility.h"
 
 
 /**
- * Function for increasing or decreasing the size of an image on the GPU.
+ * Rebase the pixel intensities of an image between two scales.
+ * For example, convert an image with values 0.0-255 to 0.0-1.0.
  * @ingroup util
  */
-cudaError_t cudaResize( float* input,  size_t inputWidth,  size_t inputHeight,
-				    float* output, size_t outputWidth, size_t outputHeight );
+cudaError_t cudaNormalizeRGBA( float4* input,  const float2& input_range,
+						 float4* output, const float2& output_range,
+						 size_t  width,  size_t height );
 
-
-/**
- * Function for increasing or decreasing the size of an image on the GPU.
- * @ingroup util
- */
-cudaError_t cudaResizeRGBA( float4* input,  size_t inputWidth,  size_t inputHeight,
-				        float4* output, size_t outputWidth, size_t outputHeight );
-
-
-						
+#ifdef __cplusplus
+}
+#endif  // __cplusplus
 
 #endif
 

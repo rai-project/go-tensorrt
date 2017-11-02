@@ -25,6 +25,9 @@
 #ifndef __CUDA_IMAGE_NET_H
 #define __CUDA_IMAGE_NET_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif  // __cplusplus
 
 
 #include "cudaUtility.h"
@@ -48,6 +51,10 @@ __global__ void gpuPreImageNetMean( float2 scale, float4* input,
 cudaError_t cudaPreImageNetMean( float4* input, size_t inputWidth, size_t inputHeight,
 				             float* output, size_t outputWidth, size_t outputHeight, const float3& mean_value )
 
+
+#ifdef __cplusplus
+}
+#endif  // __cplusplus
 
 // __CUDA_IMAGE_NET_H
 #endif

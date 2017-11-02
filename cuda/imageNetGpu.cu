@@ -21,7 +21,7 @@
  */
  
 
-
+#include "imageNetGpu.h"
 
 // gpuPreImageNet
 __global__ void gpuPreImageNet( float2 scale, float4* input, int iWidth, float* output, int oWidth, int oHeight )

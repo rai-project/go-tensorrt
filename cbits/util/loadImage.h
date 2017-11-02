@@ -23,6 +23,9 @@
 #ifndef __IMAGE_LOADER_H_
 #define __IMAGE_LOADER_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif  // __cplusplus
 
 #include "cudaUtility.h"
 
@@ -78,6 +81,8 @@ bool loadImageRGB( const char* filename, float3** cpu, float3** gpu, int* width,
  */
 bool loadImageBGR( const char* filename, float3** cpu, float3** gpu, int* width, int* height, const float3& mean=make_float3(0,0,0) );
 
-
+#ifdef __cplusplus
+}
+#endif  // __cplusplus
 
 #endif

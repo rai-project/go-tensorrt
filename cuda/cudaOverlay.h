@@ -20,19 +20,32 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef __CUDA_RGB_CONVERT_H
-#define __CUDA_RGB_CONVERT_H
+#ifndef __CUDA_OVERLAY_H__
+#define __CUDA_OVERLAY_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif  // __cplusplus
 
 #include "cudaUtility.h"
-#include <stdint.h>
 
 
 /**
- * Convert 8-bit fixed-point RGB image to 32-bit floating-point RGBA image
+ * cudaRectOutlineOverlay
  * @ingroup util
  */
-cudaError_t cudaRGBToRGBAf( uchar3* input, float4* output, size_t width, size_t height );
+cudaError_t cudaRectOutlineOverlay( float4* input, float4* output, uint32_t width, uint32_t height, float4* boundingBoxes, int numBoxes, const float4& color );
 
+
+/**
+ * cudaRectFillOverlay
+ * @ingroup util
+ */
+//cudaError_t cudaRectFillOverlay( float4* input, float4* output, uint32_t width, uint32_t height, float4* boundingBoxes, int numBoxes, const float4& color );
+
+
+#ifdef __cplusplus
+}
+#endif  // __cplusplus
 
 #endif
