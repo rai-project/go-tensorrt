@@ -26,13 +26,13 @@
 #include "imageNet.hpp"
 // #include "cbits/util/loadImage.hpp"
 // #include "imageNet.h"
-#include "loadImage.hpp"
+// #include "loadImage.hpp"
 
 
 #include "imageNet.cpp"
 #include "tensorNet.cpp"
 // #include "commandLine.cpp"
-#include "loadImage.cpp"
+// #include "loadImage.cpp"
 
 
 
@@ -42,20 +42,7 @@
 
 int Start_code(float* imageData, const int width, const int height)
 {
-	// printf("imagenet-console\n  args (%i):  ", argc);
-	
-	// for( int i=0; i < argc; i++ )
-	// 	printf("%i [%s]  ", i, argv[i]);
-		
-	// printf("\n\n");
-	
-	
-	// // retrieve filename argument
-	// if( argc < 2 )
-	// {
-	// 	printf("imagenet-console:   input image filename required\n");
-	// 	return 0;
-	// }
+
 	
 	const char* imgFilename = "./Orange.jpg";
 
@@ -76,26 +63,23 @@ int Start_code(float* imageData, const int width, const int height)
 	// load image from file on disk
 	float* imgCPU    = NULL;
 	float* imgCUDA   = NULL;
-	int    imgWidth  = 0;
-	int    imgHeight = 0;
+	int    imgWidth  = width;
+	int    imgHeight = height;
 		
-	if( !loadImageRGBA(imgFilename, (float4**)&imgCPU, (float4**)&imgCUDA, &imgWidth, &imgHeight) )
-	{
-		printf("failed to load image '%s'\n", imgFilename);
-		return 0;
-	}
-	int count = 0;
-	for (int x = 0; x < imgWidth * imgHeight * 4; x ++) {
-		if( imageData[x] != imgCPU[x]) {
-			printf("%d, %f, %f\n",x, imageData[x] , imgCPU[x]);
-			count += 1;
-		}
-		// if( x == 50002) {
-		// 	break;
-		// }
-	}
-	printf("\n\n COUNT : %d \n\n", count);
+	// if( !loadImageRGBA(imgFilename, (float4**)&imgCPU, (float4**)&imgCUDA, &imgWidth, &imgHeight) )
+	// {
+	// 	printf("failed to load image '%s'\n", imgFilename);
+	// 	return 0;
+	// }
 
+	// printf("loaded image  %s  (%u x %u)  %zu bytes\n", filename, imgWidth, imgHeight, imgSize);
+
+	// allocate buffer for the image
+	if( !cudaAllocMapped((void**)&imgCPU, (void**)&imgCUDA, imgWidth * imgHeight * sizeof(float) * 4) )
+	for( int i = 0 ; i < imgWidth * imgHeight * 4; i ++) {
+		imgCPU[i] = imageData[i];
+
+	}
 	float confidence = 0.0f;
 	
 	// classify image
