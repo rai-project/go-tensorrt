@@ -22,6 +22,7 @@
  
 #include "loadImage.hpp"
 #include "cudaMappedMemory.h"
+#include "stdio.h"
 
 #include <QImage>
 
@@ -109,6 +110,9 @@ bool loadImageRGBA( const char* filename, float4** cpu, float4** gpu, int* width
 										  float(qBlue(rgb)),
 										  float(qAlpha(rgb)));
 			
+			// if (y == 200 && x > 200 && x < 210) {
+			// 	printf("c++ value:\n %f, %f, %f, %f\n",px.x, px.y, px.z,px.w);
+			// }
 			cpuPtr[y*imgWidth+x] = px;
 		}
 	}
