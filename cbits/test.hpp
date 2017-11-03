@@ -5,8 +5,8 @@
 extern "C" {
 #endif  // __cplusplus
 
-int Start_code(int y);
-
+// int Start_code(int y);
+int Start_code(float* imageData, const int width, const int height);
 #ifdef __cplusplus
 }
 #endif  // __cplusplus

@@ -4,11 +4,41 @@ package main
 import "C"
 import (
 	"fmt"
+	"os"
+	"unsafe"
+
+	"github.com/rai-project/image"
 )
 
 func main() {
-	y := int(C.Start_code(C.int(5)))
-	fmt.Printf("Hello, word. %d\n", y)
+	reader, _ := os.Open("Orange.jpg")
+	defer reader.Close()
+
+	img, _ := image.Read(reader)
+
+	bounds := img.Bounds()
+	w, h := bounds.Max.X, bounds.Max.Y
+	imgArray := make([]float32, w*h*4)
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			// for y := 0; y < h; y++ {
+			imgColor := img.At(x, y)
+			a, b, c, d := imgColor.RGBA()
+			imgArray[y*w*4+x*4] = float32(a >> 8)
+			imgArray[y*w*4+x*4+1] = float32(b >> 8)
+			imgArray[y*w*4+x*4+2] = float32(c >> 8)
+			imgArray[y*w*4+x*4+3] = float32(d >> 8)
+			// // fmt.Println((a >> 8), b>>8, c>>8, d>>8)
+
+			// if x > 200 && x < 210 {
+			// 	fmt.Println((a >> 8), b>>8, c>>8, d>>8)
+			// }
+		}
+	}
+	ptr := (*C.float)(unsafe.Pointer(&imgArray[0]))
+	r := C.Start_code(ptr, C.int(w), C.int(h))
+	// y := int(C.Start_code(C.int(5)))
+	fmt.Printf("Hello, word. %d\n", r)
 }
 
 // type Device int

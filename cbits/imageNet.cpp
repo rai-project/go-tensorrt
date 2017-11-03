@@ -22,8 +22,6 @@
  
 #include "imageNet.hpp"
 #include "cudaMappedMemory.h"
-#include "cudaResize.h"
-#include "commandLine.h"
 #include "cudaUtility.h"
 
 #include "tensorNet.hpp"
@@ -163,19 +161,21 @@ bool imageNet::init(const char* prototxt_path, const char* model_path, const cha
 // Create
 imageNet* imageNet::Create( int argc, char** argv )
 {
-	commandLine cmdLine(argc, argv);
+	// commandLine cmdLine(argc, argv);
 
-	const char* modelName = cmdLine.GetString("model");
+	// const char* modelName = cmdLine.GetString("model");
 
-	if( !modelName )
-	{
-		if( argc == 2 )
-			modelName = argv[1];
-		else if( argc == 4 )
-			modelName = argv[3];
-		else
-			modelName = "googlenet";
-	}
+	// if( !modelName )
+	// {
+	// 	if( argc == 2 )
+	// 		modelName = argv[1];
+	// 	else if( argc == 4 )
+	// 		modelName = argv[3];
+	// 	else
+	// 		modelName = "googlenet";
+	// }
+
+	const char* modelName = "googlenet";
 
 	//if( argc > 3 )
 	//	modelName = argv[3];	
@@ -196,21 +196,21 @@ imageNet* imageNet::Create( int argc, char** argv )
 	}
 	else
 	{
-		const char* prototxt = cmdLine.GetString("prototxt");
-		const char* labels   = cmdLine.GetString("labels");
-		const char* input    = cmdLine.GetString("input_blob");
-		const char* output   = cmdLine.GetString("output_blob");
-		const char* out_bbox = cmdLine.GetString("output_bbox");
+		// const char* prototxt = cmdLine.GetString("prototxt");
+		// const char* labels   = cmdLine.GetString("labels");
+		// const char* input    = cmdLine.GetString("input_blob");
+		// const char* output   = cmdLine.GetString("output_blob");
+		// const char* out_bbox = cmdLine.GetString("output_bbox");
 		
-		if( !input ) 	input    = IMAGENET_DEFAULT_INPUT;
-		if( !output )  output   = IMAGENET_DEFAULT_OUTPUT;
+		// if( !input ) 	input    = IMAGENET_DEFAULT_INPUT;
+		// if( !output )  output   = IMAGENET_DEFAULT_OUTPUT;
 		
-		int maxBatchSize = cmdLine.GetInt("batch_size");
+		// int maxBatchSize = cmdLine.GetInt("batch_size");
 		
-		if( maxBatchSize < 1 )
-			maxBatchSize = 2;
+		// if( maxBatchSize < 1 )
+		// 	maxBatchSize = 2;
 
-		return imageNet::Create(prototxt, modelName, NULL, labels, input, output, maxBatchSize);
+		// return imageNet::Create(prototxt, modelName, NULL, labels, input, output, maxBatchSize);
 	}
 
 	// create from pretrained model

@@ -31,7 +31,7 @@
 
 #include "imageNet.cpp"
 #include "tensorNet.cpp"
-#include "commandLine.cpp"
+// #include "commandLine.cpp"
 #include "loadImage.cpp"
 
 
@@ -39,7 +39,8 @@
 
 // main entry point
 // int main( int argc, y )
-int Start_code(int y)
+
+int Start_code(float* imageData, const int width, const int height)
 {
 	// printf("imagenet-console\n  args (%i):  ", argc);
 	
@@ -83,6 +84,17 @@ int Start_code(int y)
 		printf("failed to load image '%s'\n", imgFilename);
 		return 0;
 	}
+	int count = 0;
+	for (int x = 0; x < imgWidth * imgHeight * 4; x ++) {
+		if( imageData[x] != imgCPU[x]) {
+			printf("%d, %f, %f\n",x, imageData[x] , imgCPU[x]);
+			count += 1;
+		}
+		// if( x == 50002) {
+		// 	break;
+		// }
+	}
+	printf("\n\n COUNT : %d \n\n", count);
 
 	float confidence = 0.0f;
 	
