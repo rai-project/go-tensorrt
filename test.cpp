@@ -75,7 +75,8 @@ int Start_code(float* imageData, const int width, const int height)
 	// printf("loaded image  %s  (%u x %u)  %zu bytes\n", filename, imgWidth, imgHeight, imgSize);
 
 	// allocate buffer for the image
-	if( !cudaAllocMapped((void**)&imgCPU, (void**)&imgCUDA, imgWidth * imgHeight * sizeof(float) * 4) )
+	cudaAllocMapped((void**)&imgCPU, (void**)&imgCUDA, imgWidth * imgHeight * sizeof(float) * 4);
+
 	for( int i = 0 ; i < imgWidth * imgHeight * 4; i ++) {
 		imgCPU[i] = imageData[i];
 
