@@ -41,7 +41,6 @@ struct PredictorObject {
 
 };
 
-
 PredictorContext NewTensorRT() {
 	// const char* modelName = "googlenet";
 	imageNet::NetworkType type = imageNet::GOOGLENET;
