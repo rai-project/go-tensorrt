@@ -37,11 +37,6 @@ func main() {
 			imgArray[y*w*4+x*4+1] = float32(b >> 8)
 			imgArray[y*w*4+x*4+2] = float32(c >> 8)
 			imgArray[y*w*4+x*4+3] = float32(d >> 8)
-			// // fmt.Println((a >> 8), b>>8, c>>8, d>>8)
-
-			// if x > 200 && x < 210 {
-			// 	fmt.Println((a >> 8), b>>8, c>>8, d>>8)
-			// }
 		}
 	}
 	ctx := C.NewTensorRT()

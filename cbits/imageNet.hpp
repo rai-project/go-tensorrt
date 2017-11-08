@@ -27,8 +27,8 @@
 // extern "C" {
 // #endif  // __cplusplus
 
+#include "cudaUtility.h"
 #include "tensorNet.hpp"
-#include "imageNetGpu.h"
 
 
 /**
@@ -133,6 +133,8 @@ protected:
 	bool init(const char* prototxt_path, const char* model_path, const char* mean_binary, const char* class_path, const char* input, const char* output, uint32_t maxBatchSize );
 	bool loadClassInfo( const char* filename );
 	
+	void cudaPreImageNetMean(float4* input, size_t inputWidth, size_t inputHeight,
+								float* output, size_t outputWidth, size_t outputHeight, const float3& mean_value );
 	uint32_t mCustomClasses;
 	uint32_t mOutputClasses;
 	

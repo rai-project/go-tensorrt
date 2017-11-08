@@ -9,6 +9,7 @@ typedef void *PredictorContext;
 // int Start_code(int y);
 // int Start_code(float* imageData, const int width, const int height);
 PredictorContext NewTensorRT();
+void DeleteTensorRT();
 const char *PredictTensorRT(PredictorContext pred, float *imageData,
                                 const int width, const int height);
 #ifdef __cplusplus

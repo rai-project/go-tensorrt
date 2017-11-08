@@ -25,7 +25,6 @@
 #include "cudaUtility.h"
 
 #include "tensorNet.hpp"
-#include "imageNetGpu.h"
 
 // constructor
 imageNet::imageNet() : tensorNet()
@@ -278,12 +277,6 @@ bool imageNet::loadClassInfo( const char* filename )
 	
 	return true;
 }
-
-
-
-// // from imageNet.cu
-// cudaError_t cudaPreImageNetMean( float4* input, size_t inputWidth, size_t inputHeight, float* output, size_t outputWidth, size_t outputHeight, const float3& mean_value );
-					
 					
 // Classify
 int imageNet::Classify( float* rgba, uint32_t width, uint32_t height, float* confidence )
@@ -296,19 +289,8 @@ int imageNet::Classify( float* rgba, uint32_t width, uint32_t height, float* con
 
 	
 	// downsample and convert to band-sequential BGR
-	// if( CUDA_FAILED(cudaPreImageNetMean((float4*)rgba, width, height, mInputCUDA, mWidth, mHeight,
-	// 							 make_float3(104.0069879317889f, 116.66876761696767f, 122.6789143406786f))) )
-	// {
-	// 	printf("imageNet::Classify() -- cudaPreImageNetMean failed\n");
-	// 	return -1;
-	// }
-	if( cudaPreImageNetMean((float4*)rgba, width, height, mInputCPU, mWidth, mHeight,
-								 make_float3(104.0069879317889f, 116.66876761696767f, 122.6789143406786f)) )
-	{
-		printf("imageNet::Classify() -- cudaPreImageNetMean failed\n");
-		return -1;
-	}
-	
+	cudaPreImageNetMean((float4*)rgba, width, height, mInputCPU, mWidth, mHeight,
+								 make_float3(104.0069879317889f, 116.66876761696767f, 122.6789143406786f));
 	
 	// process with GIE
 	void* inferenceBuffers[] = { mInputCUDA, mOutputs[0].CUDA };
@@ -342,4 +324,28 @@ int imageNet::Classify( float* rgba, uint32_t width, uint32_t height, float* con
 	
 	//printf("\nmaximum class:  #%i  (%f) (%s)\n", classIndex, classMax, mClassDesc[classIndex].c_str());
 	return classIndex;
+}
+void imageNet::cudaPreImageNetMean( float4* input, size_t inputWidth, size_t inputHeight,
+				             float* output, size_t outputWidth, size_t outputHeight, const float3& mean_value ){
+
+	const float2 scale = make_float2( float(inputWidth) / float(outputWidth),
+							    float(inputHeight) / float(outputHeight) );
+
+	for(int x = 0; x < outputWidth; x++ ) {
+		for(int y = 0; y < outputHeight; y++) {
+			int n = outputWidth * outputHeight;
+	
+			int dx = ((float)x * scale.x);
+			int dy = ((float)y * scale.y);
+
+			float4 px  = input[ dy * inputWidth + dx ];
+			float3 bgr = make_float3(px.z - mean_value.x, px.y - mean_value.y, px.x - mean_value.z);
+	
+			output[n * 0 + y * outputWidth + x] = bgr.x;
+			output[n * 1 + y * outputWidth + x] = bgr.y;
+			output[n * 2 + y * outputWidth + x] = bgr.z;
+		}
+
+	}
+	return;
 }
