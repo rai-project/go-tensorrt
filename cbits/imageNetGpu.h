@@ -34,20 +34,6 @@
 #include <stdint.h>
 #include <iostream>
 
-// gpuPreImageNet
-__global__ void gpuPreImageNet( float2 scale, float4* input,
-							int iWidth, float* output, int oWidth, int oHeight );
-
-
-// cudaPreImageNet
-cudaError_t cudaPreImageNet( float4* input, size_t inputWidth, size_t inputHeight,
-				         float* output, size_t outputWidth, size_t outputHeight );
-
-// gpuPreImageNetMean
-__global__ void gpuPreImageNetMean( float2 scale, float4* input,
-							int iWidth, float* output, int oWidth, int oHeight, float3 mean_value );
-
-
 // cudaPreImageNetMean
 cudaError_t cudaPreImageNetMean( float4* input, size_t inputWidth, size_t inputHeight,
 				             float* output, size_t outputWidth, size_t outputHeight, const float3& mean_value ){
@@ -58,7 +44,6 @@ cudaError_t cudaPreImageNetMean( float4* input, size_t inputWidth, size_t inputH
 	// launch kernel
 	// const dim3 blockDim(8, 8);
 	// const dim3 gridDim(iDivUp(outputWidth,blockDim.x), iDivUp(outputHeight,blockDim.y));
-	std::cout <<"Hello" << std::endl;
 
 	for(int x = 0; x < outputWidth; x++ ) {
 		for(int y = 0; y < outputHeight; y++) {

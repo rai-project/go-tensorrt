@@ -47,7 +47,6 @@ PredictorContext NewTensorRT() {
 	imageNet::NetworkType type = imageNet::GOOGLENET;
 	imageNet* net = imageNet::Create(type, 2);
 	
-	std::cout <<"Hello" << std::endl;
 	return (PredictorContext)net;
 }
 
@@ -57,7 +56,6 @@ const char *PredictTensorRT(PredictorContext pred, float *imageData, const int i
 	float* imgCUDA   = NULL;
 	int imageSize = imgWidth * imgHeight * sizeof(float) * 4;
 
-	std::cout <<"Hello" << std::endl;
 	cudaAllocMapped((void**)&imgCPU, (void**)&imgCUDA, imageSize);
 
 	for( int i = 0 ; i < imgWidth * imgHeight * 4; i ++) {
@@ -67,7 +65,6 @@ const char *PredictTensorRT(PredictorContext pred, float *imageData, const int i
 
 	imageNet * net = (imageNet *)pred;
 	
-	std::cout <<"Hello" << std::endl;
 	// classify image
 	const int img_class = net->Classify(imgCPU, imgWidth, imgHeight, &confidence);
   	json preds = json::array();

@@ -293,7 +293,6 @@ int imageNet::Classify( float* rgba, uint32_t width, uint32_t height, float* con
 		printf("imageNet::Classify( 0x%p, %u, %u ) -> invalid parameters\n", rgba, width, height);
 		return -1;
 	}
-	std::cout <<"Hello" << std::endl;
 
 	
 	// downsample and convert to band-sequential BGR
