@@ -255,14 +255,21 @@ bool tensorNet::LoadNetwork( const char* prototxt_path, const char* model_path, 
 		cache.close();
 
 		// test for half FP16 support
-		nvinfer1::IBuilder* builder = CREATE_INFER_BUILDER(gLogger);
-		
-		if( builder != NULL )
-		{
-			mEnableFP16 = !mOverride16 && builder->platformHasFastFp16();
-			printf(LOG_GIE "platform %s FP16 support.\n", mEnableFP16 ? "has" : "does not have");
-			builder->destroy();	
+		try {
+			nvinfer1::IBuilder* builder = CREATE_INFER_BUILDER(gLogger);
+			if( builder != NULL )
+			{
+				mEnableFP16 = !mOverride16 && builder->platformHasFastFp16();
+				printf(LOG_GIE "platform %s FP16 support.\n", mEnableFP16 ? "has" : "does not have");
+				builder->destroy();	
+			}
+		} catch (const nvinfer1::CudaError exc) {
+
+			std::cerr << exc.what() << std::endl;
 		}
+		
+
+		printf(LOG_GIE "Hiji111adf\n");
 	}
 
 	printf(LOG_GIE "%s loaded\n", model_path);
