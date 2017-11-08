@@ -45,6 +45,7 @@ imageNet::~imageNet()
 // Create
 imageNet* imageNet::Create( imageNet::NetworkType networkType, uint32_t maxBatchSize )
 {
+
 	imageNet* net = new imageNet();
 	
 	if( !net )
@@ -292,11 +293,18 @@ int imageNet::Classify( float* rgba, uint32_t width, uint32_t height, float* con
 		printf("imageNet::Classify( 0x%p, %u, %u ) -> invalid parameters\n", rgba, width, height);
 		return -1;
 	}
+	std::cout <<"Hello" << std::endl;
 
 	
 	// downsample and convert to band-sequential BGR
-	if( CUDA_FAILED(cudaPreImageNetMean((float4*)rgba, width, height, mInputCUDA, mWidth, mHeight,
-								 make_float3(104.0069879317889f, 116.66876761696767f, 122.6789143406786f))) )
+	// if( CUDA_FAILED(cudaPreImageNetMean((float4*)rgba, width, height, mInputCUDA, mWidth, mHeight,
+	// 							 make_float3(104.0069879317889f, 116.66876761696767f, 122.6789143406786f))) )
+	// {
+	// 	printf("imageNet::Classify() -- cudaPreImageNetMean failed\n");
+	// 	return -1;
+	// }
+	if( cudaPreImageNetMean((float4*)rgba, width, height, mInputCPU, mWidth, mHeight,
+								 make_float3(104.0069879317889f, 116.66876761696767f, 122.6789143406786f)) )
 	{
 		printf("imageNet::Classify() -- cudaPreImageNetMean failed\n");
 		return -1;

@@ -32,6 +32,7 @@
 
 #include "cudaUtility.h"
 #include <stdint.h>
+#include <iostream>
 
 // gpuPreImageNet
 __global__ void gpuPreImageNet( float2 scale, float4* input,
@@ -49,8 +50,39 @@ __global__ void gpuPreImageNetMean( float2 scale, float4* input,
 
 // cudaPreImageNetMean
 cudaError_t cudaPreImageNetMean( float4* input, size_t inputWidth, size_t inputHeight,
-				             float* output, size_t outputWidth, size_t outputHeight, const float3& mean_value );
+				             float* output, size_t outputWidth, size_t outputHeight, const float3& mean_value ){
 
+	const float2 scale = make_float2( float(inputWidth) / float(outputWidth),
+							    float(inputHeight) / float(outputHeight) );
+
+	// launch kernel
+	// const dim3 blockDim(8, 8);
+	// const dim3 gridDim(iDivUp(outputWidth,blockDim.x), iDivUp(outputHeight,blockDim.y));
+	std::cout <<"Hello" << std::endl;
+
+	for(int x = 0; x < outputWidth; x++ ) {
+		for(int y = 0; y < outputHeight; y++) {
+			// const int x = blockIdx.x * blockDim.x + threadIdx.x;
+			// const int y = blockIdx.y * blockDim.y + threadIdx.y;
+			int n = outputWidth * outputHeight;
+	
+			int dx = ((float)x * scale.x);
+			int dy = ((float)y * scale.y);
+
+			float4 px  = input[ dy * inputWidth + dx ];
+			float3 bgr = make_float3(px.z - mean_value.x, px.y - mean_value.y, px.x - mean_value.z);
+	
+			output[n * 0 + y * outputWidth + x] = bgr.x;
+			output[n * 1 + y * outputWidth + x] = bgr.y;
+			output[n * 2 + y * outputWidth + x] = bgr.z;
+		}
+
+	}
+
+	// gpuPreImageNetMean<<<gridDim, blockDim>>>(scale, input, inputWidth, output, outputWidth, outputHeight, mean_value);
+	// return CUDA(cudaGetLastError());
+	return (cudaError_t)0;
+}
 
 // #ifdef __cplusplus
 // }
