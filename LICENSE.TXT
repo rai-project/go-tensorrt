@@ -1,6 +1,6 @@
-Copyright (c) 2017, Abdul Dakkak All rights reserved.
+Copyright (c) 2017, Jong Yoon Lee All rights reserved.
 
-Developed by: 	Abdul Dakkak
+Developed by: 	Jong Yoon Lee 
                 IMPACT Group
                 University of Illinois, Urbana-Champaign
                 impact.crhc.illinois.edu
