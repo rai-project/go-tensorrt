@@ -41,12 +41,25 @@ struct PredictorObject {
 
 };
 
-PredictorContext NewTensorRT() {
-	// const char* modelName = "googlenet";
-	imageNet::NetworkType type = imageNet::GOOGLENET;
-	imageNet* net = imageNet::Create(type, 2);
-	
-	return (PredictorContext)net;
+PredictorContext NewTensorRT(char *model_file, char *trained_file, int batch, char* class_info) {
+  try
+  {
+		std::cout << "MODEL FILE " << model_file << std::endl;
+		std::cout << "trained FILE " << trained_file << std::endl;
+		std::cout << "class info " << class_info << std::endl;
+    const auto ctx = imageNet::Create(model_file, trained_file, NULL, class_info);
+		return (void *)ctx;
+  }
+  catch (const std::invalid_argument &ex)
+  {
+    return nullptr;
+	}
+
+}
+
+void DeleteTensorRT(PredictorContext pred) {
+  auto predictor = (imageNet *)pred;
+  delete predictor;
 }
 
 const char *PredictTensorRT(PredictorContext pred, float *imageData, const int imgWidth, const int imgHeight) {

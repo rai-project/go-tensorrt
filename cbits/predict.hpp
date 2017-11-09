@@ -8,7 +8,7 @@ extern "C" {
 typedef void *PredictorContext;
 // int Start_code(int y);
 // int Start_code(float* imageData, const int width, const int height);
-PredictorContext NewTensorRT();
+PredictorContext NewTensorRT(char *model_file, char *trained_file, int batch, char* class_info);
 void DeleteTensorRT();
 const char *PredictTensorRT(PredictorContext pred, float *imageData,
                                 const int width, const int height);

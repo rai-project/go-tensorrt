@@ -40,26 +40,6 @@ imageNet::~imageNet()
 
 }
 
-
-// Create
-imageNet* imageNet::Create( imageNet::NetworkType networkType, uint32_t maxBatchSize )
-{
-
-	imageNet* net = new imageNet();
-	
-	if( !net )
-		return NULL;
-	
-	if( !net->init(networkType, maxBatchSize) )
-	{
-		printf("imageNet -- failed to initialize.\n");
-		return NULL;
-	}
-	
-	return net;
-}
-
-
 // Create
 imageNet* imageNet::Create( const char* prototxt_path, const char* model_path, const char* mean_binary,
 							const char* class_path, const char* input, const char* output, uint32_t maxBatchSize )
@@ -80,39 +60,15 @@ imageNet* imageNet::Create( const char* prototxt_path, const char* model_path, c
 
 
 // init
-bool imageNet::init( imageNet::NetworkType networkType, uint32_t maxBatchSize )
-{
-	/*const char* proto_file[] = { "networks/alexnet.prototxt", "networks/googlenet.prototxt" };
-	const char* model_file[] = { "networks/bvlc_alexnet.caffemodel", "networks/bvlc_googlenet.caffemodel" };
-
-	if( !tensorNet::LoadNetwork( proto_file[networkType], model_file[networkType], NULL, "data", "prob", maxBatchSize) )
-	{
-		printf("failed to load %s\n", model_file[networkType]);
-		return false;
-	}
-
-	mNetworkType = networkType;
-	printf(LOG_GIE "%s loaded\n", GetNetworkName());
-
-
-	mOutputClasses = mOutputs[0].dims.c;
-	
-	if( !loadClassInfo("networks/ilsvrc12_synset_words.txt") || mClassSynset.size() != mOutputClasses || mClassDesc.size() != mOutputClasses )
-	{
-		printf("imageNet -- failed to load synset class descriptions  (%zu / %zu of %u)\n", mClassSynset.size(), mClassDesc.size(), mOutputClasses);
-		return false;
-	}
-	
-	printf("%s initialized.\n", GetNetworkName());
-	return true;*/
-
-	if( networkType == imageNet::ALEXNET )
-		return init( "networks/alexnet.prototxt", "networks/bvlc_alexnet.caffemodel", NULL, "networks/ilsvrc12_synset_words.txt", IMAGENET_DEFAULT_INPUT, IMAGENET_DEFAULT_OUTPUT, maxBatchSize );
-	else if( networkType == imageNet::GOOGLENET )
-		return init( "networks/googlenet.prototxt", "networks/bvlc_googlenet.caffemodel", NULL, "networks/ilsvrc12_synset_words.txt", IMAGENET_DEFAULT_INPUT, IMAGENET_DEFAULT_OUTPUT, maxBatchSize );
-	else if( networkType == imageNet::GOOGLENET_12 )
-		return init( "networks/GoogleNet-ILSVRC12-subset/deploy.prototxt", "networks/GoogleNet-ILSVRC12-subset/snapshot_iter_184080.caffemodel", NULL, "networks/GoogleNet-ILSVRC12-subset/labels.txt", IMAGENET_DEFAULT_INPUT, "softmax", maxBatchSize );
-}
+// bool imageNet::init( imageNet::NetworkType networkType, uint32_t maxBatchSize )
+// {
+// 	if( networkType == imageNet::ALEXNET )
+// 		return init( "networks/alexnet.prototxt", "networks/bvlc_alexnet.caffemodel", NULL, "networks/ilsvrc12_synset_words.txt", IMAGENET_DEFAULT_INPUT, IMAGENET_DEFAULT_OUTPUT, maxBatchSize );
+// 	else if( networkType == imageNet::GOOGLENET )
+// 		return init( "networks/googlenet.prototxt", "networks/bvlc_googlenet.caffemodel", NULL, "networks/ilsvrc12_synset_words.txt", IMAGENET_DEFAULT_INPUT, IMAGENET_DEFAULT_OUTPUT, maxBatchSize );
+// 	else if( networkType == imageNet::GOOGLENET_12 )
+// 		return init( "networks/GoogleNet-ILSVRC12-subset/deploy.prototxt", "networks/GoogleNet-ILSVRC12-subset/snapshot_iter_184080.caffemodel", NULL, "networks/GoogleNet-ILSVRC12-subset/labels.txt", IMAGENET_DEFAULT_INPUT, "softmax", maxBatchSize );
+// }
 
 
 // init
@@ -158,64 +114,64 @@ bool imageNet::init(const char* prototxt_path, const char* model_path, const cha
 			
 
 
-// Create
-imageNet* imageNet::Create( int argc, char** argv )
-{
-	// commandLine cmdLine(argc, argv);
+// // Create
+// imageNet* imageNet::Create( int argc, char** argv )
+// {
+// 	// commandLine cmdLine(argc, argv);
 
-	// const char* modelName = cmdLine.GetString("model");
+// 	// const char* modelName = cmdLine.GetString("model");
 
-	// if( !modelName )
-	// {
-	// 	if( argc == 2 )
-	// 		modelName = argv[1];
-	// 	else if( argc == 4 )
-	// 		modelName = argv[3];
-	// 	else
-	// 		modelName = "googlenet";
-	// }
+// 	// if( !modelName )
+// 	// {
+// 	// 	if( argc == 2 )
+// 	// 		modelName = argv[1];
+// 	// 	else if( argc == 4 )
+// 	// 		modelName = argv[3];
+// 	// 	else
+// 	// 		modelName = "googlenet";
+// 	// }
 
-	const char* modelName = "googlenet";
+// 	const char* modelName = "googlenet";
 
-	//if( argc > 3 )
-	//	modelName = argv[3];	
+// 	//if( argc > 3 )
+// 	//	modelName = argv[3];	
 
-	imageNet::NetworkType type = imageNet::GOOGLENET;
+// 	imageNet::NetworkType type = imageNet::GOOGLENET;
 
-	if( strcasecmp(modelName, "alexnet") == 0 )
-	{
-		type = imageNet::ALEXNET;
-	}
-	else if( strcasecmp(modelName, "googlenet") == 0 )
-	{
-		type = imageNet::GOOGLENET;
-	}
-	else if( strcasecmp(modelName, "googlenet-12") == 0 || strcasecmp(modelName, "googlenet_12") == 0 )
-	{
-		type = imageNet::GOOGLENET_12;
-	}
-	else
-	{
-		// const char* prototxt = cmdLine.GetString("prototxt");
-		// const char* labels   = cmdLine.GetString("labels");
-		// const char* input    = cmdLine.GetString("input_blob");
-		// const char* output   = cmdLine.GetString("output_blob");
-		// const char* out_bbox = cmdLine.GetString("output_bbox");
+// 	if( strcasecmp(modelName, "alexnet") == 0 )
+// 	{
+// 		type = imageNet::ALEXNET;
+// 	}
+// 	else if( strcasecmp(modelName, "googlenet") == 0 )
+// 	{
+// 		type = imageNet::GOOGLENET;
+// 	}
+// 	else if( strcasecmp(modelName, "googlenet-12") == 0 || strcasecmp(modelName, "googlenet_12") == 0 )
+// 	{
+// 		type = imageNet::GOOGLENET_12;
+// 	}
+// 	else
+// 	{
+// 		// const char* prototxt = cmdLine.GetString("prototxt");
+// 		// const char* labels   = cmdLine.GetString("labels");
+// 		// const char* input    = cmdLine.GetString("input_blob");
+// 		// const char* output   = cmdLine.GetString("output_blob");
+// 		// const char* out_bbox = cmdLine.GetString("output_bbox");
 		
-		// if( !input ) 	input    = IMAGENET_DEFAULT_INPUT;
-		// if( !output )  output   = IMAGENET_DEFAULT_OUTPUT;
+// 		// if( !input ) 	input    = IMAGENET_DEFAULT_INPUT;
+// 		// if( !output )  output   = IMAGENET_DEFAULT_OUTPUT;
 		
-		// int maxBatchSize = cmdLine.GetInt("batch_size");
+// 		// int maxBatchSize = cmdLine.GetInt("batch_size");
 		
-		// if( maxBatchSize < 1 )
-		// 	maxBatchSize = 2;
+// 		// if( maxBatchSize < 1 )
+// 		// 	maxBatchSize = 2;
 
-		// return imageNet::Create(prototxt, modelName, NULL, labels, input, output, maxBatchSize);
-	}
+// 		// return imageNet::Create(prototxt, modelName, NULL, labels, input, output, maxBatchSize);
+// 	}
 
-	// create from pretrained model
-	return imageNet::Create(type);
-}
+// 	// create from pretrained model
+// 	return imageNet::Create(type);
+// }
 				 
 
 // loadClassInfo
