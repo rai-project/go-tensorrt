@@ -44,9 +44,6 @@ struct PredictorObject {
 PredictorContext NewTensorRT(char *model_file, char *trained_file, int batch, char* class_info) {
   try
   {
-		std::cout << "MODEL FILE " << model_file << std::endl;
-		std::cout << "trained FILE " << trained_file << std::endl;
-		std::cout << "class info " << class_info << std::endl;
     const auto ctx = imageNet::Create(model_file, trained_file, NULL, class_info);
 		return (void *)ctx;
   }

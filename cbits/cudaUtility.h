@@ -99,13 +99,27 @@ inline cudaError_t cudaCheckError(cudaError_t retval, const char* txt, const cha
 	return retval;
 }
 
-
 /**
- * iDivUp
+ * Allocate ZeroCopy mapped memory, shared between CUDA and CPU.
  * @ingroup util
  */
-inline __device__ __host__ int iDivUp( int a, int b )  		{ return (a % b != 0) ? (a / b + 1) : (a / b); }
+inline bool cudaAllocMapped( void** cpuPtr, void** gpuPtr, size_t size )
+{
+	if( !cpuPtr || !gpuPtr || size == 0 )
+		return false;
 
+	//CUDA(cudaSetDeviceFlags(cudaDeviceMapHost));
+
+	if( CUDA_FAILED(cudaHostAlloc(cpuPtr, size, cudaHostAllocMapped)) )
+		return false;
+
+	if( CUDA_FAILED(cudaHostGetDevicePointer(gpuPtr, *cpuPtr, 0)) )
+		return false;
+
+	memset(*cpuPtr, 0, size);
+	printf("[cuda]  cudaAllocMapped %zu bytes, CPU %p GPU %p\n", size, *cpuPtr, *gpuPtr);
+	return true;
+}
 
 // #ifdef __cplusplus
 // }
