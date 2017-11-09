@@ -21,7 +21,6 @@
  */
  
 #include "tensorNet.hpp"
-#include "cudaMappedMemory.h"
 
 #include <iostream>
 #include <fstream>

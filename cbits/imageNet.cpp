@@ -21,7 +21,6 @@
  */
  
 #include "imageNet.hpp"
-#include "cudaMappedMemory.h"
 #include "cudaUtility.h"
 
 #include "tensorNet.hpp"
