@@ -9,8 +9,16 @@ import (
 	"os"
 	"unsafe"
 
+	"github.com/Unknwon/com"
+	"github.com/pkg/errors"
+	"github.com/rai-project/dlframework/framework/options"
 	"github.com/rai-project/image"
 )
+
+type Predictor struct {
+	ctx     C.PredictorContext
+	options *options.Options
+}
 
 type Prediction struct {
 	Index       string  `json:"index"`
@@ -39,7 +47,8 @@ func main() {
 			imgArray[y*w*4+x*4+3] = float32(d >> 8)
 		}
 	}
-	ctx := C.NewTensorRT()
+
+	ctx, _ := New(options.Class([]byte("networks/ilsvrc12_synset_words.txt")), options.Graph([]byte("networks/googlenet.prototxt")), options.Weights([]byte("networks/bvlc_googlenet.caffemodel")))
 	// ptr := (*C.float)(unsafe.Pointer(&imgArray[0]))
 	// r := C.Start_code(ptr, C.int(w), C.int(h))
 	result, _ := Predict(ctx, imgArray, w, h)
@@ -60,4 +69,23 @@ func Predict(ctx C.PredictorContext, imgArray []float32, width int, height int) 
 		return nil, err
 	}
 	return predictions, nil
+}
+
+func New(opts ...options.Option) (C.PredictorContext, error) {
+	options := options.New(opts...)
+	modelFile := string(options.Graph())
+	if !com.IsFile(modelFile) {
+		return nil, errors.Errorf("file %s not found", modelFile)
+	}
+	weightsFile := string(options.Weights())
+	if !com.IsFile(weightsFile) {
+		return nil, errors.Errorf("file %s not found", weightsFile)
+	}
+
+	symbolFile := string(options.Class())
+	if !com.IsFile(weightsFile) {
+		return nil, errors.Errorf("file %s not found", weightsFile)
+	}
+
+	return C.NewTensorRT(C.CString(modelFile), C.CString(weightsFile), C.int(options.BatchSize()), C.CString(symbolFile)), nil
 }

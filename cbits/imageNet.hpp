@@ -63,11 +63,6 @@ public:
 
 	/**
 	 * Load a new network instance
-	 */
-	static imageNet* Create( NetworkType networkType=GOOGLENET, uint32_t maxBatchSize=2 );
-	
-	/**
-	 * Load a new network instance
 	 * @param prototxt_path File path to the deployable network prototxt
 	 * @param model_path File path to the caffemodel
 	 * @param mean_binary File path to the mean value binary proto (can be NULL)
@@ -81,11 +76,6 @@ public:
 						const char* output=IMAGENET_DEFAULT_OUTPUT, 
 						uint32_t maxBatchSize=2 );
 	
-	/**
-	 * Load a new network instance by parsing the command line.
-	 */
-	static imageNet* Create( int argc, char** argv );
-
 	/**
 	 * Destroy
 	 */
