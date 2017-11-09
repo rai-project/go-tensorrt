@@ -6,10 +6,8 @@ extern "C" {
 #endif  // __cplusplus
 
 typedef void *PredictorContext;
-// int Start_code(int y);
-// int Start_code(float* imageData, const int width, const int height);
 PredictorContext NewTensorRT(char *model_file, char *trained_file, int batch, char* class_info);
-void DeleteTensorRT();
+void DeleteTensorRT(PredictorContext pred);
 const char *PredictTensorRT(PredictorContext pred, float *imageData,
                                 const int width, const int height);
 #ifdef __cplusplus

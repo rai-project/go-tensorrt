@@ -1,4 +1,4 @@
-package main
+package tensorrt
 
 // #cgo LDFLAGS: -lnvinfer -lnvcaffe_parser -lcudart -L${SRCDIR} -lstdc++
 // #cgo CXXFLAGS: -std=c++11  -O3 -Wall -g
