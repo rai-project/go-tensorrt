@@ -1,3 +1,4 @@
+#ifdef __linux__
 
 #include "predict.hpp"
 #include "json.hpp"
@@ -148,3 +149,4 @@ const char *PredictTensorRT(PredictorContext pred, float *input,
   auto res = strdup(preds.dump().c_str());
   return res;
 }
+#endif // __linux__

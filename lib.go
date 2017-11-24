@@ -1,3 +1,5 @@
+// +build linux
+
 package tensorrt
 
 // #cgo LDFLAGS: -lnvinfer -lnvcaffe_parser -lcudart -L${SRCDIR} -lstdc++

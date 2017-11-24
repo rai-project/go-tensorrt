@@ -1,3 +1,5 @@
+// +build linux
+
 package tensorrt
 
 // #include <stdlib.h>
