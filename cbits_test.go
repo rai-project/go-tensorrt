@@ -26,10 +26,10 @@ var (
 
 func TestTensorRT(t *testing.T) {
 
-	reader, _ := os.Open(filepath.Join(thisDir, "_fixtures", "chicken.jpg"))
+	reader, _ := os.Open(filepath.Join(thisDir, "_fixtures", "cat.jpg"))
 	defer reader.Close()
 
-	img0, err := image.Read(reader)
+	img0, err := image.Read(reader, image.Resized(224, 224))
 	assert.NoError(t, err)
 
 	img := img0.(*types.RGBImage)
@@ -55,8 +55,6 @@ func TestTensorRT(t *testing.T) {
 
 		}
 	}
-
-	pp.Println(imgArray[102:112])
 
 	pred, err := New(
 		options.Class([]byte(classFilePath)),
@@ -85,13 +83,13 @@ func TestTensorRT(t *testing.T) {
 	classes := strings.Split(string(classesFileContent), "\n")
 
 	// pp.Println(result[:10])
-	assert.Equal(t, 885, result[0].Index)
+	assert.Equal(t, 281, result[0].Index)
 
 	pp.Println(result[0])
-	if classes[result[0].Index] != "orange" {
+	if classes[result[0].Index] != "n02123045 tabby, tabby cat" {
 		t.Errorf("tensorRT class label wrong")
 	}
-	if math.Abs(float64(result[0].Probability-0.972248)) > .001 {
+	if math.Abs(float64(result[0].Probability-0.5)) < .001 {
 		t.Errorf("tensorRT class probablity wrong")
 	}
 }

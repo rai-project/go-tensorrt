@@ -50,7 +50,7 @@ class Logger : public ILogger {
 #define CHECK(status)                                                          \
   {                                                                            \
     if (status != 0) {                                                         \
-      std::cout << "Cuda failure on line " << __LINE__                         \
+      std::cerr << "Cuda failure on line " << __LINE__                         \
                 << " status =  " << status << "\n";                            \
       return nullptr;                                                          \
     }                                                                          \
@@ -124,8 +124,6 @@ const char *PredictTensorRT(PredictorContext pred, float *input,
 const auto output_size = output_dim_.c() * output_dim_.h() * output_dim_.w();
   const auto output_byte_size = output_size * sizeof(float);
 
-  std::vector<float> output(batchSize * output_size);
-  std::fill(output.begin(), output.end(), 0);
 
 float * input_layer, * output_layer;
 
@@ -141,9 +139,6 @@ float * input_layer, * output_layer;
   std::cerr << "size of output = " << batchSize * output_byte_size
             << "\n";
 
-            for (int ii = 102 ; ii < 112; ii++) {
-              std::cerr << "cinput [" << ii << " ] = " << input[ii] << "\n";
-            }
 
   // DMA the input to the GPU,  execute the batch asynchronously, and DMA it
   // back:
@@ -153,6 +148,11 @@ float * input_layer, * output_layer;
 
 void* buffers[2] = { input_layer, output_layer };
   context->execute(batchSize, buffers);
+
+
+  std::vector<float> output(batchSize * output_size);
+  std::fill(output.begin(), output.end(), 0);
+
   CHECK(cudaMemcpy(output.data(), output_layer,
                    batchSize * output_byte_size,
                    cudaMemcpyDeviceToHost));
@@ -168,10 +168,17 @@ void* buffers[2] = { input_layer, output_layer };
 
   for (int cnt = 0; cnt < batchSize; cnt++) {
     for (int idx = 0; idx < output_size; idx++) {
+      if (output[cnt * output_size + idx] > 0.0001) {
+      std::cerr << " output[" << cnt * output_size + idx << "] = " << output[cnt * output_size + idx] << "\n";
+      }
       preds.push_back(
           {{"index", idx}, {"probability", output[cnt * output_size + idx]}});
     }
   }
+
+  std::cerr << "output_size = " << output_size << "\n";
+
+  fflush(stderr);
 
   auto res = strdup(preds.dump().c_str());
   return res;
