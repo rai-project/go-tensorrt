@@ -30,6 +30,10 @@ func New(opts0 ...options.Option) (*Predictor, error) {
 		return nil, errors.Errorf("file %s not found", weightsFile)
 	}
 
+	if opts.OutputNode() == "" {
+		return nil, errors.Errorf("expecting a valid (non-empty) output node name")
+	}
+
 	modelFileString := C.CString(modelFile)
 	defer C.free(unsafe.Pointer(modelFileString))
 
@@ -51,11 +55,23 @@ func New(opts0 ...options.Option) (*Predictor, error) {
 	}, nil
 }
 
-func (p *Predictor) Predict(input []float32) (Predictions, error) {
-	inputLayerName := C.CString(p.options.InputNodes()[0].Key())
+func (p *Predictor) Predict(inputLayerName0 string, outputLayerName0 string, input []float32) (Predictions, error) {
+	// log.WithField("input_layer_name", inputLayerName0).
+	// 	WithField("output_layer_name", outputLayerName0).
+	// 	Info("performing tensorrt prediction")
+
+	if inputLayerName0 == "" {
+		return nil, errors.New("expecting a valid (non-empty) input layer name")
+	}
+
+	if outputLayerName0 == "" {
+		return nil, errors.New("expecting a valid (non-empty) output layer name")
+	}
+
+	inputLayerName := C.CString(inputLayerName0)
 	defer C.free(unsafe.Pointer(inputLayerName))
 
-	outputLayerName := C.CString(p.options.OutputNode())
+	outputLayerName := C.CString(outputLayerName0)
 	defer C.free(unsafe.Pointer(outputLayerName))
 
 	ptr := (*C.float)(unsafe.Pointer(&input[0]))
