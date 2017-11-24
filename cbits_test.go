@@ -3,14 +3,20 @@ package tensorrt
 import (
 	"math"
 	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/GeertJohan/go-sourcepath"
 
 	"github.com/rai-project/dlframework/framework/options"
 	"github.com/rai-project/image"
 )
 
 func TestTensorRT(t *testing.T) {
-	reader, _ := os.Open("Orange.jpg")
+
+	thisDir := sourcepath.MustAbsoluteDir()
+
+	reader, _ := os.Open(filepath.Join(thisDir, "Orange.jpg"))
 	defer reader.Close()
 
 	img, _ := image.Read(reader)
@@ -30,12 +36,18 @@ func TestTensorRT(t *testing.T) {
 		}
 	}
 
-	ctx, err := New(options.Class([]byte("networks/ilsvrc12_synset_words.txt")), options.Graph([]byte("networks/googlenet.prototxt")), options.Weights([]byte("networks/bvlc_googlenet.caffemodel")))
+	pred, err := New(
+		options.Class([]byte(filepath.Join(thisDir, "networks", "ilsvrc12_synset_words.txt"))),
+		options.Graph([]byte(filepath.Join(thisDir, "networks", "googlenet.prototxt"))),
+		options.Weights([]byte(filepath.Join(thisDir, "networks", "bvlc_googlenet.caffemodel"))),
+	)
 	if err != nil {
 		t.Errorf("tensorRT initiate failed %v", err)
 	}
 
-	result, err := ctx.Predict(imgArray, w, h)
+	defer pred.Close()
+
+	result, err := pred.Predict(imgArray, w, h)
 	if err != nil {
 		t.Errorf("tensorRT inference failed %v", err)
 	}
@@ -45,6 +57,4 @@ func TestTensorRT(t *testing.T) {
 	if math.Abs(float64(result[0].Probability-0.972248)) > .001 {
 		t.Errorf("tensorRT class probablity wrong")
 	}
-	ctx.Close()
-
 }
