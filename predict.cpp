@@ -67,9 +67,8 @@ const char *PredictTensorRT(PredictorContext pred, float *imageData, const int i
 
 	cudaAllocMapped((void**)&imgCPU, (void**)&imgCUDA, imageSize);
 
-	for( int i = 0 ; i < imgWidth * imgHeight * 4; i ++) {
-		imgCPU[i] = imageData[i];
-	}
+memcpy(imgCPU, imageData, imageSize);
+
 	float confidence = 0.0f;
 
 	imageNet * net = (imageNet *)pred;

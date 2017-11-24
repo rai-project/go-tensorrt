@@ -24,22 +24,6 @@ type Prediction struct {
 
 type Predictions []Prediction
 
-func (p *Predictor) Predict(imgArray []float32, width int, height int) (Predictions, error) {
-	// check input
-
-	ptr := (*C.float)(unsafe.Pointer(&imgArray[0]))
-	r := C.PredictTensorRT(p.ctx, ptr, C.int(width), C.int(height))
-	defer C.free(unsafe.Pointer(r))
-	js := C.GoString(r)
-
-	predictions := []Prediction{}
-	err := json.Unmarshal([]byte(js), &predictions)
-	if err != nil {
-		return nil, err
-	}
-	return predictions, nil
-}
-
 func New(opts ...options.Option) (*Predictor, error) {
 	options := options.New(opts...)
 	modelFile := string(options.Graph())
@@ -56,12 +40,51 @@ func New(opts ...options.Option) (*Predictor, error) {
 		return nil, errors.Errorf("file %s not found", weightsFile)
 	}
 
-	ctx := C.NewTensorRT(C.CString(modelFile), C.CString(weightsFile), C.int(options.BatchSize()), C.CString(symbolFile))
+	ctx := C.NewTensorRT(
+		C.CString(modelFile),
+		C.CString(weightsFile),
+		C.int(options.BatchSize()),
+		C.CString(symbolFile),
+	)
 	return &Predictor{
 		ctx:     ctx,
 		options: options,
 	}, nil
 }
+
+func (p *Predictor) Predict(imgArray []float32, batchSize int, channels int,
+	width int, height int) (Predictions, error) {
+	// check input
+
+	ptr := (*C.float)(unsafe.Pointer(&imgArray[0]))
+	r := C.PredictTensorRT(p.ctx, ptr, C.int(width), C.int(height))
+	defer C.free(unsafe.Pointer(r))
+	js := C.GoString(r)
+
+	predictions := []Prediction{}
+	err := json.Unmarshal([]byte(js), &predictions)
+	if err != nil {
+		return nil, err
+	}
+	return predictions, nil
+}
+
+func (p *Predictor) StartProfiling(name, metadata string) error {
+	return nil
+}
+
+func (p *Predictor) EndProfiling() error {
+	return nil
+}
+
+func (p *Predictor) DisableProfiling() error {
+	return nil
+}
+
+func (p *Predictor) ReadProfile() (string, error) {
+	return "", nil
+}
+
 func (p Predictor) Close() {
 	C.DeleteTensorRT(p.ctx)
 }
