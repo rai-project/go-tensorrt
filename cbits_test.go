@@ -19,9 +19,9 @@ import (
 
 var (
 	thisDir         = sourcepath.MustAbsoluteDir()
-	classFilePath   = filepath.Join(thisDir, "networks", "ilsvrc12_synset_words.txt")
-	graphFilePath   = filepath.Join(thisDir, "networks", "googlenet.prototxt")
-	weightsFilePath = filepath.Join(thisDir, "networks", "bvlc_googlenet.caffemodel")
+	classFilePath   = filepath.Join(thisDir, "_fixtures", "networks", "ilsvrc12_synset_words.txt")
+	graphFilePath   = filepath.Join(thisDir, "_fixtures", "networks", "googlenet.prototxt")
+	weightsFilePath = filepath.Join(thisDir, "_fixtures", "networks", "bvlc_googlenet.caffemodel")
 )
 
 func TestTensorRT(t *testing.T) {
