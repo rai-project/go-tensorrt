@@ -51,10 +51,7 @@ func New(opts0 ...options.Option) (*Predictor, error) {
 	}, nil
 }
 
-func (p *Predictor) Predict(input []float32, channels int,
-	width int, height int) (Predictions, error) {
-	// check input
-
+func (p *Predictor) Predict(input []float32) (Predictions, error) {
 	inputLayerName := C.CString(p.options.InputNodes()[0].Key())
 	defer C.free(unsafe.Pointer(inputLayerName))
 
