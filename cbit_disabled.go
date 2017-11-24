@@ -19,8 +19,7 @@ func New(opts0 ...options.Option) (*Predictor, error) {
 	return nil, invalidSystemError
 }
 
-func (p *Predictor) Predict(input []float32, channels int,
-	width int, height int) (Predictions, error) {
+func (p *Predictor) Predict(input []float32) (Predictions, error) {
 	return nil, invalidSystemError
 }
 
