@@ -17,47 +17,55 @@ type Predictor struct {
 	options *options.Options
 }
 
-type Prediction struct {
-	Index       string  `json:"index"`
-	Probability float32 `json:"probability"`
-}
-
-type Predictions []Prediction
-
-func New(opts ...options.Option) (*Predictor, error) {
-	options := options.New(opts...)
-	modelFile := string(options.Graph())
+func New(opts0 ...options.Option) (*Predictor, error) {
+	opts := options.New(opts0...)
+	modelFile := string(opts.Graph())
 	if !com.IsFile(modelFile) {
 		return nil, errors.Errorf("file %s not found", modelFile)
 	}
-	weightsFile := string(options.Weights())
+	weightsFile := string(opts.Weights())
 	if !com.IsFile(weightsFile) {
 		return nil, errors.Errorf("file %s not found", weightsFile)
 	}
 
-	symbolFile := string(options.Class())
-	if !com.IsFile(weightsFile) {
-		return nil, errors.Errorf("file %s not found", weightsFile)
-	}
+	modelFileString := C.CString(modelFile)
+	defer C.free(unsafe.Pointer(modelFileString))
+
+	weightsFileString := C.CString(weightsFile)
+	defer C.free(unsafe.Pointer(weightsFileString))
+
+	outputNodeString := C.CString(opts.OutputNode())
+	defer C.free(unsafe.Pointer(outputNodeString))
 
 	ctx := C.NewTensorRT(
-		C.CString(modelFile),
-		C.CString(weightsFile),
-		C.int(options.BatchSize()),
-		C.CString(symbolFile),
+		modelFileString,
+		weightsFileString,
+		C.int(opts.BatchSize()),
+		outputNodeString,
 	)
 	return &Predictor{
 		ctx:     ctx,
-		options: options,
+		options: opts,
 	}, nil
 }
 
-func (p *Predictor) Predict(imgArray []float32, batchSize int, channels int,
+func (p *Predictor) Predict(input []float32, channels int,
 	width int, height int) (Predictions, error) {
 	// check input
 
-	ptr := (*C.float)(unsafe.Pointer(&imgArray[0]))
-	r := C.PredictTensorRT(p.ctx, ptr, C.int(width), C.int(height))
+	inputLayerName := C.CString(p.options.InputNodes()[0].Key())
+	defer C.free(unsafe.Pointer(inputLayerName))
+
+	outputLayerName := C.CString(p.options.OutputNode())
+	defer C.free(unsafe.Pointer(outputLayerName))
+
+	ptr := (*C.float)(unsafe.Pointer(&input[0]))
+	r := C.PredictTensorRT(p.ctx, ptr, inputLayerName, outputLayerName,
+		C.int(p.options.BatchSize()),
+	)
+	if r == nil {
+		return nil, errors.New("failed to perform tensorrt prediction")
+	}
 	defer C.free(unsafe.Pointer(r))
 	js := C.GoString(r)
 
