@@ -1,26 +1,4 @@
 
-/*
- * Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the "Software"),
- * to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
- * and/or sell copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
- * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
- * DEALINGS IN THE SOFTWARE.
- */
-
 #include "predict.hpp"
 #include "json.hpp"
 
@@ -92,7 +70,8 @@ void DeleteTensorRT(PredictorContext pred) {
 
 const char *PredictTensorRT(PredictorContext pred, float *input,
                             const char *input_layer_name,
-                            const char *output_layer_name, const int batchSize) {
+                            const char *output_layer_name,
+                            const int batchSize) {
 
   auto predictor = (ICudaEngine *)pred;
 
@@ -111,8 +90,8 @@ const char *PredictTensorRT(PredictorContext pred, float *input,
   const int input_index = predictor->getBindingIndex(input_layer_name);
   const int output_index = predictor->getBindingIndex(output_layer_name);
 
-  std::cerr << "using input layer = " << input_layer_name << "\n";
-  std::cerr << "using output layer = " << output_layer_name << "\n";
+  // std::cerr << "using input layer = " << input_layer_name << "\n";
+  // std::cerr << "using output layer = " << output_layer_name << "\n";
 
   const auto input_dim_ =
       static_cast<DimsCHW &&>(predictor->getBindingDimensions(input_index));
@@ -121,40 +100,31 @@ const char *PredictTensorRT(PredictorContext pred, float *input,
 
   const auto output_dim_ =
       static_cast<DimsCHW &&>(predictor->getBindingDimensions(output_index));
-const auto output_size = output_dim_.c() * output_dim_.h() * output_dim_.w();
+  const auto output_size = output_dim_.c() * output_dim_.h() * output_dim_.w();
   const auto output_byte_size = output_size * sizeof(float);
 
+  float *input_layer, *output_layer;
 
-float * input_layer, * output_layer;
-
-  CHECK(cudaMalloc((void**)&input_layer, batchSize * input_byte_size));
-  CHECK(cudaMalloc((void**)&output_layer, batchSize * output_byte_size));
+  CHECK(cudaMalloc((void **)&input_layer, batchSize * input_byte_size));
+  CHECK(cudaMalloc((void **)&output_layer, batchSize * output_byte_size));
 
   IExecutionContext *context = predictor->createExecutionContext();
 
-  std::cerr << "size of input = "
-            << batchSize * input_byte_size
-            << "\n";
-
-  std::cerr << "size of output = " << batchSize * output_byte_size
-            << "\n";
-
+  // std::cerr << "size of input = " << batchSize * input_byte_size << "\n";
+  // std::cerr << "size of output = " << batchSize * output_byte_size << "\n";
 
   // DMA the input to the GPU,  execute the batch asynchronously, and DMA it
   // back:
-  CHECK(cudaMemcpy(input_layer, input,
-                   batchSize * input_byte_size,
+  CHECK(cudaMemcpy(input_layer, input, batchSize * input_byte_size,
                    cudaMemcpyHostToDevice));
 
-void* buffers[2] = { input_layer, output_layer };
+  void *buffers[2] = {input_layer, output_layer};
   context->execute(batchSize, buffers);
-
 
   std::vector<float> output(batchSize * output_size);
   std::fill(output.begin(), output.end(), 0);
 
-  CHECK(cudaMemcpy(output.data(), output_layer,
-                   batchSize * output_byte_size,
+  CHECK(cudaMemcpy(output.data(), output_layer, batchSize * output_byte_size,
                    cudaMemcpyDeviceToHost));
 
   // release the stream and the buffers
@@ -168,15 +138,10 @@ void* buffers[2] = { input_layer, output_layer };
 
   for (int cnt = 0; cnt < batchSize; cnt++) {
     for (int idx = 0; idx < output_size; idx++) {
-      if (output[cnt * output_size + idx] > 0.0001) {
-      std::cerr << " output[" << cnt * output_size + idx << "] = " << output[cnt * output_size + idx] << "\n";
-      }
       preds.push_back(
           {{"index", idx}, {"probability", output[cnt * output_size + idx]}});
     }
   }
-
-  std::cerr << "output_size = " << output_size << "\n";
 
   fflush(stderr);
 
