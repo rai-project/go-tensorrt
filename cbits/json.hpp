@@ -44,14 +44,14 @@ SOFTWARE.
 #include <initializer_list> // initializer_list
 #include <iomanip>          // hex
 #include <iosfwd>           // istream, ostream
-#include <iterator> // advance, begin, back_inserter, bidirectional_iterator_tag, distance, end, inserter, iterator, iterator_traits, next, random_access_iterator_tag, reverse_iterator
-#include <limits>   // numeric_limits
-#include <locale>   // locale
-#include <map>      // map
-#include <memory>   // addressof, allocator, allocator_traits, unique_ptr
-#include <numeric>  // accumulate
-#include <sstream>  // stringstream
-#include <string>   // getline, stoi, string, to_string
+#include <iterator>         // advance, begin, back_inserter, bidirectional_iterator_tag, distance, end, inserter, iterator, iterator_traits, next, random_access_iterator_tag, reverse_iterator
+#include <limits>           // numeric_limits
+#include <locale>           // locale
+#include <map>              // map
+#include <memory>      // addressof, allocator, allocator_traits, unique_ptr
+#include <numeric>     // accumulate
+#include <sstream>     // stringstream
+#include <string>      // getline, stoi, string, to_string
 #include <type_traits> // add_pointer, conditional, decay, enable_if, false_type, integral_constant, is_arithmetic, is_base_of, is_const, is_constructible, is_convertible, is_default_constructible, is_enum, is_floating_point, is_integral, is_nothrow_move_assignable, is_nothrow_move_constructible, is_pointer, is_reference, is_same, is_scalar, is_signed, remove_const, remove_cv, remove_pointer, remove_reference, true_type, underlying_type
 #include <utility>     // declval, forward, make_pair, move, pair, swap
 #include <vector>      // vector
@@ -1535,8 +1535,9 @@ public:
     assert(std::accumulate(
                first, last, std::pair<bool, int>(true, 0),
                [&first](std::pair<bool, int> res, decltype(*first) val) {
-                 res.first &= (val == *(std::next(std::addressof(*first),
-                                                  res.second++)));
+                 res.first &=
+                     (val ==
+                      *(std::next(std::addressof(*first), res.second++)));
                  return res;
                })
                .first);
@@ -3446,8 +3447,8 @@ public:
   @note It is not checked whether @a other is initialized.
   */
   iter_impl(const iter_impl<typename std::remove_const<BasicJsonType>::type>
-                &other) noexcept
-      : m_object(other.m_object), m_it(other.m_it) {}
+                &other) noexcept : m_object(other.m_object),
+                                   m_it(other.m_it) {}
 
   /*!
   @brief converting assignment
@@ -6554,9 +6555,8 @@ private:
     // check if nonempty reference string begins with slash
     if (JSON_UNLIKELY(reference_string[0] != '/')) {
       JSON_THROW(detail::parse_error::create(
-          107, 1,
-          "JSON pointer must be empty or begin with '/' - was: '" +
-              reference_string + "'"));
+          107, 1, "JSON pointer must be empty or begin with '/' - was: '" +
+                      reference_string + "'"));
     }
 
     // extract the reference tokens:
@@ -8207,8 +8207,8 @@ public:
 
   @since version 1.0.0
   */
-  basic_json(basic_json &&other) noexcept
-      : m_type(std::move(other.m_type)), m_value(std::move(other.m_value)) {
+  basic_json(basic_json &&other) noexcept : m_type(std::move(other.m_type)),
+                                            m_value(std::move(other.m_value)) {
     // check that passed value is valid
     other.assert_invariant();
 
@@ -9136,9 +9136,10 @@ public:
                                detail::json_ref<basic_json>>::value and
               not std::is_same<ValueType, typename string_t::value_type>::value
 #ifndef _MSC_VER // fix for issue #167 operator<< ambiguity under VS2015
-              and not std::is_same<ValueType,
-                                   std::initializer_list<
-                                       typename string_t::value_type>>::value
+              and
+              not std::is_same<
+                  ValueType,
+                  std::initializer_list<typename string_t::value_type>>::value
 #endif
 #if (defined(__cplusplus) && __cplusplus >= 201703L) ||                        \
     (defined(_MSC_VER) && _MSC_VER > 1900 && defined(_HAS_CXX17) &&            \
@@ -12961,8 +12962,8 @@ public:
       case patch_operations::invalid: {
         // op must be "add", "remove", "replace", "move", "copy", or
         // "test"
-        JSON_THROW(parse_error::create(
-            105, 0, "operation value '" + op + "' is invalid"));
+        JSON_THROW(parse_error::create(105, 0, "operation value '" + op +
+                                                   "' is invalid"));
       }
       }
     }

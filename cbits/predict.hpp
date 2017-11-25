@@ -12,6 +12,18 @@ void DeleteTensorRT(PredictorContext pred);
 const char *PredictTensorRT(PredictorContext pred, float *input,
                             const char *input_layer_name,
                             const char *output_layer_name, const int batchSize);
+
+void TensorRTInit();
+
+void TensorRTStartProfiling(PredictorContext pred, const char *name,
+                            const char *metadata);
+
+void TensorRTEndProfiling(PredictorContext pred);
+
+void TensorRTDisableProfiling(PredictorContext pred);
+
+char *TensorRTReadProfile(PredictorContext pred);
+
 #ifdef __cplusplus
 }
 #endif // __cplusplus
