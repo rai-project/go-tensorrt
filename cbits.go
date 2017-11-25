@@ -91,21 +91,32 @@ func (p *Predictor) Predict(inputLayerName0 string, outputLayerName0 string, inp
 	}
 	return predictions, nil
 }
-
 func (p *Predictor) StartProfiling(name, metadata string) error {
+	cname := C.CString(name)
+	cmetadata := C.CString(metadata)
+	defer C.free(unsafe.Pointer(cname))
+	defer C.free(unsafe.Pointer(cmetadata))
+	C.TensorRTStartProfiling(p.ctx, cname, cmetadata)
 	return nil
 }
 
 func (p *Predictor) EndProfiling() error {
+	C.TensorRTEndProfiling(p.ctx)
 	return nil
 }
 
 func (p *Predictor) DisableProfiling() error {
+	C.TensorRTDisableProfiling(p.ctx)
 	return nil
 }
 
 func (p *Predictor) ReadProfile() (string, error) {
-	return "", nil
+	cstr := C.TensorRTReadProfile(p.ctx)
+	if cstr == nil {
+		return "", errors.New("failed to read nil profile")
+	}
+	defer C.free(unsafe.Pointer(cstr))
+	return C.GoString(cstr), nil
 }
 
 func (p Predictor) Close() {
