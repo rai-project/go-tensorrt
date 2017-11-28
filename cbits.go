@@ -55,7 +55,15 @@ func New(opts0 ...options.Option) (*Predictor, error) {
 	}, nil
 }
 
-func (p *Predictor) Predict(inputLayerName0 string, outputLayerName0 string, input []float32) (Predictions, error) {
+func prod(arry []int32) int64 {
+	accum := int64(1)
+	for _, e := range arry {
+		accum *= int64(e)
+	}
+	return accum
+}
+
+func (p *Predictor) Predict(inputLayerName0 string, outputLayerName0 string, input []float32, shape []int32) (Predictions, error) {
 	// log.WithField("input_layer_name", inputLayerName0).
 	// 	WithField("output_layer_name", outputLayerName0).
 	// 	Info("performing tensorrt prediction")
@@ -73,6 +81,14 @@ func (p *Predictor) Predict(inputLayerName0 string, outputLayerName0 string, inp
 
 	outputLayerName := C.CString(outputLayerName0)
 	defer C.free(unsafe.Pointer(outputLayerName))
+
+	batchSize := int64(p.options.BatchSize())
+	shapeLen := prod(shape)
+	dataLen := int64(len(input)) / shapeLen
+	if batchSize > dataLen {
+		padding := make([]float32, (batchSize-dataLen)*shapeLen)
+		input = append(input, padding...)
+	}
 
 	ptr := (*C.float)(unsafe.Pointer(&input[0]))
 	r := C.PredictTensorRT(p.ctx, ptr, inputLayerName, outputLayerName,
