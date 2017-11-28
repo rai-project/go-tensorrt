@@ -55,7 +55,7 @@ func New(opts0 ...options.Option) (*Predictor, error) {
 	}, nil
 }
 
-func prod(arry []int32) int64 {
+func prod(arry []uint32) int64 {
 	accum := int64(1)
 	for _, e := range arry {
 		accum *= int64(e)
@@ -63,7 +63,7 @@ func prod(arry []int32) int64 {
 	return accum
 }
 
-func (p *Predictor) Predict(inputLayerName0 string, outputLayerName0 string, input []float32, shape []int32) (Predictions, error) {
+func (p *Predictor) Predict(inputLayerName0 string, outputLayerName0 string, input []float32, shape []uint32) (Predictions, error) {
 	// log.WithField("input_layer_name", inputLayerName0).
 	// 	WithField("output_layer_name", outputLayerName0).
 	// 	Info("performing tensorrt prediction")
