@@ -57,7 +57,6 @@ func TestTensorRT(t *testing.T) {
 	}
 
 	pred, err := New(
-		options.Class([]byte(classFilePath)),
 		options.Graph([]byte(graphFilePath)),
 		options.Weights([]byte(weightsFilePath)),
 		options.BatchSize(1),
@@ -70,7 +69,7 @@ func TestTensorRT(t *testing.T) {
 
 	defer pred.Close()
 
-	result, err := pred.Predict(imgArray, channels, w, h)
+	result, err := pred.Predict("data", "prob", imgArray, []uint32{3, 224, 224})
 	if err != nil {
 		t.Errorf("tensorRT inference failed %v", err)
 	}
