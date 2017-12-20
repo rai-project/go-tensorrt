@@ -39,7 +39,12 @@ class Logger : public ILogger {
 
 class Profiler : public IProfiler {
 public:
-  Profiler(profile *prof) : prof_(prof) { current_time_ = prof->get_start(); }
+  Profiler(profile *prof) : prof_(prof) { 
+      if (prof_ == nullptr) {
+          return ;
+      }
+      current_time_ = prof_->get_start();  
+  }
 
   /** \brief layer time reporting callback
    *
