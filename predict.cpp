@@ -39,11 +39,11 @@ class Logger : public ILogger {
 
 class Profiler : public IProfiler {
 public:
-  Profiler(profile *prof) : prof_(prof) { 
-      if (prof_ == nullptr) {
-          return ;
-      }
-      current_time_ = prof_->get_start();  
+  Profiler(profile *prof) : prof_(prof) {
+    if (prof_ == nullptr) {
+      return;
+    }
+    current_time_ = prof_->get_start();
   }
 
   /** \brief layer time reporting callback
@@ -75,9 +75,12 @@ private:
 
 class Predictor {
 public:
-  Predictor(ICudaEngine *engine) : engine_(engine){};
+  Predictor(ICudaEngine *engine, IExecutionContext *context)
+      : engine_(engine), context_(context){};
   ~Predictor() {
-
+    if (context_) {
+      context_->destroy();
+    }
     if (engine_) {
       engine_->destroy();
     }
@@ -88,7 +91,8 @@ public:
     }
   }
 
-  ICudaEngine *engine_;
+  ICudaEngine *engine_{nullptr};
+  IExecutionContext *context_{nullptr};
   profile *prof_{nullptr};
   bool prof_registered_{false};
 };
@@ -113,7 +117,8 @@ PredictorContext NewTensorRT(char *deploy_file, char *weights_file, int batch,
     builder->setMaxBatchSize(batch);
     builder->setMaxWorkspaceSize(1 << 20);
     ICudaEngine *engine = builder->buildCudaEngine(*network);
-    Predictor *pred = new Predictor(engine);
+    IExecutionContext *context = engine->createExecutionContext();
+    Predictor *pred = new Predictor(engine, context);
     return (PredictorContext)pred;
   } catch (const std::invalid_argument &ex) {
     return nullptr;
@@ -136,12 +141,19 @@ const char *PredictTensorRT(PredictorContext pred, float *input,
   auto predictor = (Predictor *)pred;
 
   if (predictor == nullptr) {
-    std::cerr << "tensorrt prediction error on " << __LINE__ << "\n";
+    std::cerr << "tensorrt prediction error on " << __LINE__
+              << " :: null predictor\n";
     return nullptr;
   }
   auto engine = predictor->engine_;
   if (engine->getNbBindings() != 2) {
     std::cerr << "tensorrt prediction error on " << __LINE__ << "\n";
+    return nullptr;
+  }
+  auto context = predictor->context_;
+  if (context == nullptr) {
+    std::cerr << "tensorrt prediction error on " << __LINE__
+              << " :: null context\n";
     return nullptr;
   }
 
@@ -169,8 +181,6 @@ const char *PredictTensorRT(PredictorContext pred, float *input,
   CHECK(cudaMalloc((void **)&input_layer, batchSize * input_byte_size));
   CHECK(cudaMalloc((void **)&output_layer, batchSize * output_byte_size));
 
-  IExecutionContext *context = engine->createExecutionContext();
-
   // std::cerr << "size of input = " << batchSize * input_byte_size << "\n";
   // std::cerr << "size of output = " << batchSize * output_byte_size << "\n";
 
@@ -197,8 +207,6 @@ const char *PredictTensorRT(PredictorContext pred, float *input,
   // release the stream and the buffers
   CHECK(cudaFree(input_layer));
   CHECK(cudaFree(output_layer));
-
-  context->destroy();
 
   // classify image
   json preds = json::array();
