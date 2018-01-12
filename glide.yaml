@@ -1,0 +1,24 @@
+package: github.com/rai-project/go-tensorrt
+import:
+  - package: github.com/Unknwon/com
+    version: ^1.0.0
+  - package: github.com/ianlancetaylor/cgosymbolizer
+  - package: github.com/pkg/errors
+    version: ^0.8.0
+  - package: github.com/rai-project/config
+  - package: github.com/rai-project/dlframework
+    subpackages:
+      - framework/options
+  - package: github.com/rai-project/logger
+  - package: github.com/sirupsen/logrus
+    version: ^1.0.4
+  - package: github.com/GeertJohan/go-sourcepath
+  - package: github.com/k0kubun/pp
+    version: ^2.3.0
+  - package: github.com/rai-project/image
+    subpackages:
+      - types
+  - package: github.com/stretchr/testify
+    version: ^1.2.0
+    subpackages:
+      - assert

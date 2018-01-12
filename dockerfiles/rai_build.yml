@@ -1,0 +1,13 @@
+rai:
+  version: 0.2
+resources:
+  cpu:
+    architecture: ppc64le
+  network: false
+commands:
+  build_image:
+    image_name: carml/go-caffe2:gpu-ppc64le
+    dockerfile: ./Dockerfile.ppc64le_gpu
+    # no_cache: true
+    push:
+      push: true

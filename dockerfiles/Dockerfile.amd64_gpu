@@ -1,0 +1,46 @@
+FROM carml/base:amd64-gpu-latest
+MAINTAINER Abdul Dakkak <dakkak@illinois.edu>
+
+# Build-time metadata as defined at http://label-schema.org
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VCS_URL
+ARG VERSION
+ARG ARCH
+ARG FRAMEWORK_VERSION
+ARG DEB_PATH
+LABEL org.carml.go-tensorrt.build-date=$BUILD_DATE \
+      org.carml.go-tensorrt.name="go-tensorrt bindings for go with cuda support" \
+      org.carml.go-tensorrt.description="" \
+      org.carml.go-tensorrt.url="https://www.carml.org/" \
+      org.carml.go-tensorrt.vcs-ref=$VCS_REF \
+      org.carml.go-tensorrt.vcs-url=$VCS_URL \
+      org.carml.go-tensorrt.vendor="CarML" \
+      org.carml.go-tensorrt.arch=$ARCH \
+      org.carml.go-tensorrt.version=$VERSION \
+      org.carml.go-tensorrt.framework_version=$FRAMEWORK_VERSION \
+      org.carml.go-tensorrt.schema-version="1.0"
+
+########## TENSORRT INSTALLATION ###################
+
+COPY $DEB_PATH /tmp/tensorrt.deb
+
+RUN dpkg -i /tmp/tensorrt.deb && \ 
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        tensorrt \ 
+        libnvinfer-dev \ 
+        ca-certificates && \
+    rm -rf /var/lib/apt/lists/* /tmp/tensorrt.deb
+
+########## GO BINDING INSTALLATION ###################
+ENV PKG github.com/rai-project/go-tensorrt
+WORKDIR $GOPATH/src/$PKG
+
+RUN git clone --depth=1 --branch=master https://${PKG}.git . && \
+    glide install && \
+    rm -fr vendor/github.com/Sirupsen && \
+    find vendor -type f -exec sed -i 's/Sirupsen/sirupsen/g' {} + && \
+    go build -a -installsuffix cgo -ldflags "-s -w -X ${PKG}/Version=${VERSION} -X ${PKG}/GitCommit=${VCS_REF} -X ${PKG}/BuildDate=${BUILD_DATE}"&& \
+    go install && \
+    rm -fr vendor
