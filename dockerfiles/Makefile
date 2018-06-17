@@ -1,5 +1,5 @@
 
-default: docker_build_cpu
+default: docker_build_gpu
 
 # Build Docker image
 build: docker_build output
@@ -54,7 +54,7 @@ BUILD_ARGS = --build-arg BUILD_DATE=`date -u +"%Y-%m-%dT%H:%M:%SZ"` \
 		        --build-arg VCS_URL=`git config --get remote.origin.url` \
 		        --build-arg VCS_REF=$(GIT_COMMIT) \
 		        --build-arg ARCH=$(ARCH) \
-				--build-arg FRAMEWORK_VERSION="v3.0" \
+				--build-arg FRAMEWORK_VERSION="v4.0" \
 				--build-arg DEB_PATH=$(DEB_PATH)
 
 docker_build_gpu: # Build GPU Docker image
