@@ -4,7 +4,7 @@ import:
     version: ^1.0.0
   - package: github.com/ianlancetaylor/cgosymbolizer
   - package: github.com/pkg/errors
-    version: ^0.8.0
+    version: ~0.8.0
   - package: github.com/rai-project/config
   - package: github.com/rai-project/dlframework
     subpackages:
@@ -14,11 +14,10 @@ import:
     version: ^1.0.4
   - package: github.com/GeertJohan/go-sourcepath
   - package: github.com/k0kubun/pp
-    version: ^2.3.0
+    version: ~2.3.0
   - package: github.com/rai-project/image
     subpackages:
       - types
   - package: github.com/stretchr/testify
-    version: ^1.2.0
     subpackages:
       - assert
