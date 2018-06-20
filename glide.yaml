@@ -11,7 +11,7 @@ import:
       - framework/options
   - package: github.com/rai-project/logger
   - package: github.com/sirupsen/logrus
-    version: ^1.0.4
+    version: ^1.0.0
   - package: github.com/GeertJohan/go-sourcepath
   - package: github.com/k0kubun/pp
     version: ~2.3.0
