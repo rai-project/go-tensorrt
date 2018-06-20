@@ -7,6 +7,7 @@ import:
     version: ~0.8.0
   - package: github.com/rai-project/config
   - package: github.com/rai-project/dlframework
+    version: master
     subpackages:
       - framework/options
   - package: github.com/rai-project/logger
