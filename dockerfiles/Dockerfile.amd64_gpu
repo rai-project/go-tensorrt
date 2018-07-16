@@ -38,7 +38,7 @@ ENV PKG github.com/rai-project/go-tensorrt
 WORKDIR $GOPATH/src/$PKG
 
 RUN git clone --depth=1 --branch=master https://${PKG}.git . && \
-    glide install && \
+    dep ensure && \
     rm -fr vendor/github.com/Sirupsen && \
     find vendor -type f -exec sed -i 's/Sirupsen/sirupsen/g' {} + && \
     go build -a -installsuffix cgo -ldflags "-s -w -X ${PKG}/Version=${VERSION} -X ${PKG}/GitCommit=${VCS_REF} -X ${PKG}/BuildDate=${BUILD_DATE}"&& \
