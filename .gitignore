@@ -4,3 +4,5 @@ networks/*
 *.so
 
 tensorrt
+
+.vscode/cquery_cached_index
