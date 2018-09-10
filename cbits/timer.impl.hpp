@@ -13,6 +13,8 @@
 
 using json = nlohmann::json;
 
+using shapes_t = std::vector<std::vector<int>>;
+
 using timestamp_t = std::chrono::time_point<std::chrono::system_clock>;
 
 static timestamp_t now() { return std::chrono::system_clock::now(); }
@@ -30,18 +32,38 @@ static uint64_t to_nanoseconds(timestamp_t t) {
 }
 
 struct profile_entry {
-  profile_entry(std::string name, timestamp_t start, timestamp_t end)
-      : name_(name), start_(start), end_(end) {}
+  profile_entry(int layer_sequence_index, std::string name,
+                std::string metadata, shapes_t shapes)
+      : layer_sequence_index_(layer_sequence_index),
+        name_(name),
+        metadata_(metadata),
+        shapes_(shapes) {
+    start();
+  }
   ~profile_entry() {}
+
+  error_t start() {
+    start_ = now();
+    return success;
+  }
+
+  error_t end() {
+    end_ = now();
+    return success;
+  }
 
   json to_json() {
     const auto start_ns = to_nanoseconds(start_);
     const auto end_ns = to_nanoseconds(end_);
+    uint64_t id = std::hash<std::thread::id>()(std::this_thread::get_id());
     return json{
         {"name", name_},
-        {"elapsed", elapsed_},
+        {"metadata", metadata_},
         {"start", start_ns},
         {"end", end_ns},
+        {"layer_sequence_index", layer_sequence_index_},
+        {"shapes", shapes_},
+        {"thread_id", id},
     };
   }
 
@@ -50,16 +72,17 @@ struct profile_entry {
     std::cout << j.dump(2) << "\n";
   }
 
-private:
+ private:
+  int layer_sequence_index_{0};
   std::string name_{""};
-  float elapsed_{0};
+  std::string metadata_{""};
+  shapes_t shapes_{};
   timestamp_t start_{}, end_{};
 };
 
 struct profile {
   profile(std::string name = "", std::string metadata = "")
       : name_(name), metadata_(metadata) {
-    entries_.reserve(1024);
     start();
   }
   ~profile() { this->reset(); }
@@ -68,8 +91,6 @@ struct profile {
     start_ = now();
     return success;
   }
-
-  timestamp_t get_start() { return start_; }
 
   error_t end() {
     end_ = now();
@@ -87,10 +108,27 @@ struct profile {
     return success;
   }
 
-  error_t add(profile_entry *entry) {
+  error_t add(int ii, profile_entry *entry) {
     std::lock_guard<std::mutex> lock(mut_);
-    entries_.emplace_back(entry);
+    if (ii >= entries_.size()) {
+      entries_.reserve(2 * ii);
+    }
+    auto begin = entries_.begin();
+    if (ii > entries_.size() + 1) {
+      for (int jj = entries_.size(); jj < ii; jj++) {
+        entries_.insert(begin + jj, nullptr);
+      }
+    }
+    entries_.insert(begin + ii, entry);
     return success;
+  }
+
+  profile_entry *get(int ii) {
+    std::lock_guard<std::mutex> lock(mut_);
+    if (ii >= entries_.size()) {
+      return nullptr;
+    }
+    return entries_[ii];
   }
 
   json to_json() {
@@ -101,6 +139,9 @@ struct profile {
 
     json elements = json::array();
     for (const auto e : entries_) {
+      if (e == nullptr) {
+        continue;
+      }
       elements.emplace_back(e->to_json());
     }
     return json{
@@ -119,7 +160,7 @@ struct profile {
     return j.dump();
   }
 
-private:
+ private:
   std::string name_{""};
   std::string metadata_{""};
   std::vector<profile_entry *> entries_{};

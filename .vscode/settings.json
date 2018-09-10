@@ -29,5 +29,6 @@
         "typeinfo": "cpp",
         "utility": "cpp",
         "vector": "cpp"
-    }
+    },
+    "cquery.cacheDirectory": "${workspaceFolder}/.vscode/cquery_cached_index/"
 }
