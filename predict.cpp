@@ -58,11 +58,14 @@ public:
       return;
     }
 
+    shapes_t shapes{};
+
     auto duration = std::chrono::nanoseconds((timestamp_t::rep)(1000000 * ms));
-    auto e =
-        new profile_entry(layer_name, current_time_, current_time_ + duration);
+    auto e = new profile_entry(current_layer_sequence_index_, layer_name,
+                               current_time_, current_time_ + duration, shapes);
     prof_->add(e);
 
+    current_layer_sequence_index_++;
     current_time_ += duration;
   }
 
@@ -70,6 +73,7 @@ public:
 
 private:
   profile *prof_{nullptr};
+  int current_layer_sequence_index_{1};
   timestamp_t current_time_{};
 };
 
@@ -115,7 +119,7 @@ PredictorContext NewTensorRT(char *deploy_file, char *weights_file, int batch,
     network->markOutput(*loc);
 
     builder->setMaxBatchSize(batch);
-    builder->setMaxWorkspaceSize(1 << 20);
+    builder->setMaxWorkspaceSize(20 << 20);
     ICudaEngine *engine = builder->buildCudaEngine(*network);
     IExecutionContext *context = engine->createExecutionContext();
     Predictor *pred = new Predictor(engine, context);
