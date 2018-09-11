@@ -47,10 +47,19 @@ struct profile_entry {
     return success;
   }
 
+  void set_start(timestamp_t t) {
+      start_ = t;
+  }
+
   error_t end() {
     end_ = now();
     return success;
   }
+
+  void set_end(timestamp_t t) {
+      end_ = t;
+  }
+
 
   json to_json() {
     const auto start_ns = to_nanoseconds(start_);
@@ -92,10 +101,19 @@ struct profile {
     return success;
   }
 
+  timestamp_t get_start() {
+      return start_;
+  }
+
   error_t end() {
     end_ = now();
     return success;
   }
+
+  timestamp_t get_end() {
+      return end_;
+  }
+
 
   error_t reset() {
     std::lock_guard<std::mutex> lock(mut_);
