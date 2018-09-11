@@ -61,9 +61,10 @@ public:
     shapes_t shapes{};
 
     auto duration = std::chrono::nanoseconds((timestamp_t::rep)(1000000 * ms));
-    auto e = new profile_entry(current_layer_sequence_index_, layer_name,
-                               current_time_, current_time_ + duration, shapes);
-    prof_->add(e);
+    auto e = new profile_entry(current_layer_sequence_index_, layer_name, "", shapes);
+    e->set_start(current_time_);
+    e->set_end(current_time_ + duration);
+    prof_->add(current_layer_sequence_index_ - 1, e);
 
     current_layer_sequence_index_++;
     current_time_ += duration;
