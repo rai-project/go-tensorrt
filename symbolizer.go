@@ -1,5 +1,5 @@
-// +build linux
+// +build cgo
 
 package tensorrt
 
-import _ "github.com/ianlancetaylor/cgosymbolizer"
+import _ "github.com/benesch/cgosymbolizer"
