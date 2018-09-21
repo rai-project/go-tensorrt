@@ -6,7 +6,6 @@ package tensorrt
 // #include "cbits/predict.hpp"
 import "C"
 import (
-	"encoding/json"
 	"unsafe"
 
 	"github.com/Unknwon/com"
@@ -98,17 +97,29 @@ func (p *Predictor) Predict(inputLayerName0 string, outputLayerName0 string, inp
 	if r == nil {
 		return nil, errors.New("failed to perform tensorrt prediction")
 	}
-	//defer C.free(unsafe.Pointer(r))
-	if false {
-		js := C.GoString(r)
-
-		predictions := []Prediction{}
-		err := json.Unmarshal([]byte(js), &predictions)
-		if err != nil {
-			return nil, err
+	defer C.free(unsafe.Pointer(r))
+	outputSize := 1000
+	length := batchSize * int64(outputSize)
+	predictions := make([]Prediction, length)
+	probs := (*[1 << 30]C.float)(unsafe.Pointer(r))[:length:length]
+	for ii, prob := range probs {
+		predictions[ii] = Prediction{
+			Index:       ii % outputSize,
+			Probability: float32(prob),
 		}
 	}
-	return []Prediction{}, nil
+	/*
+		if false {
+			js := C.GoString(r)
+
+			predictions := []Prediction{}
+			err := json.Unmarshal([]byte(js), &predictions)
+			if err != nil {
+				return nil, err
+			}
+		}
+	*/
+	return predictions, nil
 }
 func (p *Predictor) StartProfiling(name, metadata string) error {
 	cname := C.CString(name)

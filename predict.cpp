@@ -161,7 +161,7 @@ void DeleteTensorRT(PredictorContext pred) {
   delete predictor;
 }
 
-const char *PredictTensorRT(PredictorContext pred, float *input,
+float * PredictTensorRT(PredictorContext pred, float *input,
                             const char *input_layer_name,
                             const char *output_layer_name,
                             const int batchSize) {
@@ -226,16 +226,16 @@ const char *PredictTensorRT(PredictorContext pred, float *input,
 
   context->execute(batchSize, buffers);
 
-  std::vector<float> output(batchSize * output_size);
-  std::fill(output.begin(), output.end(), 0);
+   float * output = (float*) calloc(batchSize * output_size, sizeof(float));
 
-  CHECK(cudaMemcpy(output.data(), output_layer, batchSize * output_byte_size,
+  CHECK(cudaMemcpy(output, output_layer, batchSize * output_byte_size,
                    cudaMemcpyDeviceToHost));
 
   // release the stream and the buffers
   CHECK(cudaFree(input_layer));
   CHECK(cudaFree(output_layer));
 
+#if 0
 #if 0
   // classify image
   rapidjson::Document preds;
@@ -268,12 +268,17 @@ preds.Accept(writer);
       if (cnt != 0 && idx != 0) {
         os << ",";
       }
-      os << "{\"index\":" << idx << ", \"probability\":"
-         << milo::dtoa_milo(output[cnt * output_size + idx]) << "}";
+ //     os << "{\"index\":" << idx << ", \"probability\":"
+  //       << milo::dtoa_milo(output[cnt * output_size + idx]) << "}";
+       os << "{\"index\":" << idx << ", \"probability\":"
+  /       << milo::dtoa_milo(output[cnt * output_size + idx]) << "}";
     }
   }
   os << "]";
   return  os.str().c_str();
+#endif
+#else
+  return output;
 #endif
 }
 
