@@ -97,15 +97,17 @@ func (p *Predictor) Predict(inputLayerName0 string, outputLayerName0 string, inp
 	if r == nil {
 		return nil, errors.New("failed to perform tensorrt prediction")
 	}
-	defer C.free(unsafe.Pointer(r))
-	js := C.GoString(r)
+	//defer C.free(unsafe.Pointer(r))
+	if false {
+		js := C.GoString(r)
 
-	predictions := []Prediction{}
-	err := json.Unmarshal([]byte(js), &predictions)
-	if err != nil {
-		return nil, err
+		predictions := []Prediction{}
+		err := json.Unmarshal([]byte(js), &predictions)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return predictions, nil
+	return []Prediction{}, nil
 }
 func (p *Predictor) StartProfiling(name, metadata string) error {
 	cname := C.CString(name)

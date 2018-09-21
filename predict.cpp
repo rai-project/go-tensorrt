@@ -28,6 +28,7 @@ class Logger : public ILogger {
   }
 } gLogger;
 
+#if 0
 #define CHECK(status)                                                          \
   {                                                                            \
     if (status != 0) {                                                         \
@@ -36,6 +37,9 @@ class Logger : public ILogger {
       return nullptr;                                                          \
     }                                                                          \
   }
+#else
+#define CHECK(status) status;
+#endif
 
 class Profiler : public IProfiler {
 public:
@@ -220,6 +224,7 @@ const char *PredictTensorRT(PredictorContext pred, float *input,
   CHECK(cudaFree(input_layer));
   CHECK(cudaFree(output_layer));
 
+
   // classify image
   json preds = json::array();
 
@@ -230,10 +235,8 @@ const char *PredictTensorRT(PredictorContext pred, float *input,
     }
   }
 
-  fflush(stderr);
 
-  auto res = strdup(preds.dump().c_str());
-  return res;
+  return preds.dump().c_str();
 }
 
 void TensorRTInit() {}
