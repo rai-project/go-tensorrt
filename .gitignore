@@ -1,8 +1,11 @@
-build/*
-networks/*
+*.d
 *.o
-*.so
 
-tensorrt
+*.DS_Store
+tmp
+_obj
+cifar-test-leveldb
 
-.vscode/cquery_cached_index
+single
+*nvprof
+batch
