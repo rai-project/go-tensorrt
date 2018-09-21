@@ -5,17 +5,16 @@
 #include "timer.h"
 #include "timer.impl.hpp"
 
-
-
-#include <sstream>
 #include <algorithm>
 #include <iostream>
+#include <sstream>
 #include <vector>
 
 #include <cuda_runtime_api.h>
 
 #include "NvCaffeParser.h"
 #include "NvInfer.h"
+#include "dtoa_milo.h"
 
 using namespace nvinfer1;
 using namespace nvcaffeparser1;
@@ -77,14 +76,15 @@ public:
     shapes_t shapes{};
 
     auto duration = std::chrono::nanoseconds((timestamp_t::rep)(1000000 * ms));
-    auto e = new profile_entry(current_layer_sequence_index_, layer_name, "", shapes);
+    auto e = new profile_entry(current_layer_sequence_index_, layer_name, "",
+                               shapes);
 #if 0
 	timestamp_t n = now();
     e->set_start(n - duration);
     e->set_end(n);
     prof_->add(current_layer_sequence_index_ - 1, e);
 #else
-	e->set_start(current_time_);
+    e->set_start(current_time_);
     e->set_end(current_time_ + duration);
     prof_->add(current_layer_sequence_index_ - 1, e);
 #endif
@@ -236,7 +236,6 @@ const char *PredictTensorRT(PredictorContext pred, float *input,
   CHECK(cudaFree(input_layer));
   CHECK(cudaFree(output_layer));
 
-
 #if 0
   // classify image
   rapidjson::Document preds;
@@ -262,18 +261,24 @@ preds.Accept(writer);
 
   return strbuf.GetString();
 #else
-  std::stringstream  os;
+  std::stringstream os;
   os << "[";
   for (int cnt = 0; cnt < batchSize; cnt++) {
     for (int idx = 0; idx < output_size; idx++) {
-	 if (cnt != 0 && idx != 0) {
-		 os << ",";
-	 }
-	 os << "{\"index\":" <<  std::to_string(idx) << ", \"probability\":" << std::to_string(output[cnt * output_size + idx]) << "}";
+      if (cnt != 0 && idx != 0) {
+        os << ",";
+      }
+      os << "{\"index\":" << idx << ", \"probability\":"
+         << milo::dtoa_milo(output[cnt * output_size + idx]) << "}";
     }
   }
   os << "]";
-  return os.str().c_str();
+
+  const char * e =   os.str().c_str();
+  if (e[2]) {
+	  return "xx";
+  }
+  return e;
 #endif
 }
 

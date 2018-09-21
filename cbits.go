@@ -91,6 +91,7 @@ func (p *Predictor) Predict(inputLayerName0 string, outputLayerName0 string, inp
 	}
 
 	ptr := (*C.float)(unsafe.Pointer(&input[0]))
+
 	r := C.PredictTensorRT(p.ctx, ptr, inputLayerName, outputLayerName,
 		C.int(p.options.BatchSize()),
 	)
