@@ -273,12 +273,7 @@ preds.Accept(writer);
     }
   }
   os << "]";
-
-  const char * e =   os.str().c_str();
-  if (e[2]) {
-	  return "xx";
-  }
-  return e;
+  return  os.str().c_str();
 #endif
 }
 
