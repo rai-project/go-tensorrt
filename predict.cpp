@@ -1,10 +1,13 @@
 #ifdef __linux__
 
 #include "predict.hpp"
-#include "json.hpp"
+#include "rapidjson-amalgamation.h"
 #include "timer.h"
 #include "timer.impl.hpp"
 
+
+
+#include <sstream>
 #include <algorithm>
 #include <iostream>
 #include <vector>
@@ -17,7 +20,16 @@
 using namespace nvinfer1;
 using namespace nvcaffeparser1;
 
-using json = nlohmann::json;
+#if 0
+#define BACKWARD_HAS_DW 1
+#include "backward.hpp"
+
+namespace backward {
+
+backward::SignalHandling sh;
+
+} // namespace backward
+#endif
 
 class Logger : public ILogger {
   void log(Severity severity, const char *msg) override {
@@ -225,18 +237,44 @@ const char *PredictTensorRT(PredictorContext pred, float *input,
   CHECK(cudaFree(output_layer));
 
 
+#if 0
   // classify image
-  json preds = json::array();
+  rapidjson::Document preds;
+preds.SetArray();
 
+rapidjson::Document::AllocatorType& allocator = preds.GetAllocator();
+
+const auto output_data = output.data();
   for (int cnt = 0; cnt < batchSize; cnt++) {
     for (int idx = 0; idx < output_size; idx++) {
-      preds.push_back(
-          {{"index", idx}, {"probability", output[cnt * output_size + idx]}});
+		rapidjson::Value pred(rapidjson::kObjectType);
+	pred.AddMember("index", idx, allocator);
+	pred.AddMember("probability", output_data[cnt * output_size + idx], allocator);
+	preds.PushBack(pred, allocator);
     }
   }
 
 
-  return preds.dump().c_str();
+rapidjson::StringBuffer strbuf;
+rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
+preds.Accept(writer);
+
+
+  return strbuf.GetString();
+#else
+  std::stringstream  os;
+  os << "[";
+  for (int cnt = 0; cnt < batchSize; cnt++) {
+    for (int idx = 0; idx < output_size; idx++) {
+	 if (cnt != 0 && idx != 0) {
+		 os << ",";
+	 }
+	 os << "{\"index\":" <<  std::to_string(idx) << ", \"probability\":" << std::to_string(output[cnt * output_size + idx]) << "}";
+    }
+  }
+  os << "]";
+  return os.str().c_str();
+#endif
 }
 
 void TensorRTInit() {}
