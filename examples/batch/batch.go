@@ -110,7 +110,10 @@ func main() {
 		options.Device(device, 0),
 		options.Graph([]byte(graph)),
 		options.Weights([]byte(weights)),
-		options.BatchSize(uint32(batchSize)))
+		options.InputNode("data", []uint32{3, 227, 227}),
+		options.OutputNode("prob"),
+		options.BatchSize(uint32(batchSize))
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -126,7 +129,7 @@ func main() {
 		}
 	}
 	predictor.StartProfiling("predict", "")
-	predictions, err := predictor.Predict("data", "prob", input, []uint32{1, 3, 227, 227})
+	predictions, err := predictor.Predict("data", "prob", input, []uint32{3, 227, 227})
 	if err != nil {
 		panic(err)
 	}
