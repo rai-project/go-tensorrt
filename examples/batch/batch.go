@@ -126,7 +126,7 @@ func main() {
 		}
 	}
 	predictor.StartProfiling("predict", "")
-	predictions, err := predictor.Predict(ctx, input)
+	predictions, err := predictor.Predict("data", "prob", input, []uint32{1, 3, 227, 227})
 	if err != nil {
 		panic(err)
 	}
