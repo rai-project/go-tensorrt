@@ -101,7 +101,7 @@ func main() {
 		panic("no GPU")
 	}
 
-	span, ctx := tracer.StartSpanFromContext(ctx, tracer.FULL_TRACE, "caffe_batch")
+	span, ctx := tracer.StartSpanFromContext(ctx, tracer.FULL_TRACE, "tensorrt_batch")
 	defer span.Finish()
 
 	// create predictor
@@ -112,7 +112,7 @@ func main() {
 		options.Weights([]byte(weights)),
 		options.InputNode("data", []uint32{3, 227, 227}),
 		options.OutputNode("prob"),
-		options.BatchSize(uint32(batchSize))
+		options.BatchSize(uint32(batchSize)),
 	)
 	if err != nil {
 		panic(err)
