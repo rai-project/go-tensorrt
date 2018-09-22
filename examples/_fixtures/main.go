@@ -62,18 +62,26 @@ func main() {
 	ctx := context.Background()
 
 	defer tracer.Close()
-	if _, err := downloadmanager.DownloadInto(graph_url, dir); err != nil {
-		panic(err)
+
+	if _, err := os.Stat(graph); os.IsNotExist(err) {
+		if _, err := downloadmanager.DownloadInto(graph_url, dir); err != nil {
+			panic(err)
+		}
+	}
+	if _, err := os.Stat(weights); os.IsNotExist(err) {
+
+		if _, err := downloadmanager.DownloadInto(weights_url, dir); err != nil {
+			panic(err)
+		}
+	}
+	if _, err := os.Stat(features); os.IsNotExist(err) {
+
+		if _, err := downloadmanager.DownloadInto(features_url, dir); err != nil {
+			panic(err)
+		}
 	}
 
-	if _, err := downloadmanager.DownloadInto(weights_url, dir); err != nil {
-		panic(err)
-	}
-	if _, err := downloadmanager.DownloadInto(features_url, dir); err != nil {
-		panic(err)
-	}
-
-	imgDir, _ := filepath.Abs("../_fixtures")
+	imgDir, _ := filepath.Abs("./_fixtures")
 	imagePath := filepath.Join(imgDir, "platypus.jpg")
 
 	img, err := imgio.Open(imagePath)
@@ -101,7 +109,7 @@ func main() {
 		panic("no GPU")
 	}
 
-	span, ctx := tracer.StartSpanFromContext(ctx, tracer.FULL_TRACE, "tensorrt_batch")
+	span, ctx := tracer.StartSpanFromContext(ctx, tracer.FULL_TRACE, "tensorrt_example")
 	defer span.Finish()
 
 	// create predictor
