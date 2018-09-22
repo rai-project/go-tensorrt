@@ -8,15 +8,14 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/GeertJohan/go-sourcepath"
-
-	"github.com/k0kubun/pp"
-
 	"github.com/anthonynsimon/bild/imgio"
 	"github.com/anthonynsimon/bild/transform"
+	"github.com/k0kubun/pp"
+
 	"github.com/rai-project/config"
 	"github.com/rai-project/dlframework/framework/options"
 	"github.com/rai-project/downloadmanager"
+	cupti "github.com/rai-project/go-cupti"
 	"github.com/rai-project/go-tensorrt"
 	nvidiasmi "github.com/rai-project/nvidia-smi"
 	"github.com/rai-project/tracer"
@@ -25,9 +24,9 @@ import (
 )
 
 var (
-	batch        = 64
-	graph_url    = "https://github.com/DeepScale/SqueezeNet/raw/master/SqueezeNet_v1.0/deploy.prototxt"
-	weights_url  = "https://github.com/DeepScale/SqueezeNet/raw/master/SqueezeNet_v1.0/squeezenet_v1.0.caffemodel"
+	batchSize    = 64
+	graph_url    = "https://raw.githubusercontent.com/BVLC/caffe/master/models/bvlc_alexnet/deploy.prototxt"
+	weights_url  = "http://dl.caffe.berkeleyvision.org/bvlc_alexnet.caffemodel"
 	features_url = "http://data.dmlc.ml/mxnet/models/imagenet/synset.txt"
 )
 
@@ -60,49 +59,36 @@ func main() {
 	weights := filepath.Join(dir, "bvlc_alexnet.caffemodel")
 	features := filepath.Join(dir, "synset.txt")
 
-  defer tracer.Close()
+	ctx := context.Background()
 
-  span, ctx := tracer.StartSpanFromContext(context.Background(), tracer.FULL_TRACE, "tensorrt_single")
-	defer span.Finish()
-
+	defer tracer.Close()
 	if _, err := downloadmanager.DownloadInto(graph_url, dir); err != nil {
-		os.Exit(-1)
+		panic(err)
 	}
 
 	if _, err := downloadmanager.DownloadInto(weights_url, dir); err != nil {
-		os.Exit(-1)
+		panic(err)
 	}
 	if _, err := downloadmanager.DownloadInto(features_url, dir); err != nil {
-		os.Exit(-1)
+		panic(err)
 	}
 
+	imgDir, _ := filepath.Abs("../_fixtures")
+	imagePath := filepath.Join(imgDir, "platypus.jpg")
+
+	img, err := imgio.Open(imagePath)
+	if err != nil {
+		panic(err)
+	}
 
 	var input []float32
-	cnt := 0
-
-	imgDir, _ := filepath.Abs("../_fixtures")
-	err := filepath.Walk(imgDir, func(path string, info os.FileInfo, err error) error {
-		if path == imgDir || filepath.Ext(path) != ".jpg" || cnt >= batch {
-			return nil
-		}
-
-		img, err := imgio.Open(path)
-		if err != nil {
-			return err
-		}
+	for ii := 0; ii < batchSize; ii++ {
 		resized := transform.Resize(img, 227, 227, transform.Linear)
-		res, err := cvtImageTo1DArray(resized, {123, 117, 104})
+		res, err := cvtImageTo1DArray(resized, []float32{123, 117, 104})
 		if err != nil {
 			panic(err)
 		}
 		input = append(input, res...)
-		cnt++
-
-		return nil
-  })
-
-	if err != nil {
-		panic(err)
 	}
 
 	opts := options.New()
@@ -110,11 +96,13 @@ func main() {
 	device := options.CPU_DEVICE
 	if nvidiasmi.HasGPU {
 		device = options.CUDA_DEVICE
-	} else {
-		panic("no gpu")
-  }
 
-	// pp.Println("Using device = ", device)
+	} else {
+		panic("no GPU")
+	}
+
+	span, ctx := tracer.StartSpanFromContext(ctx, tracer.FULL_TRACE, "caffe_batch")
+	defer span.Finish()
 
 	// create predictor
 	predictor, err := tensorrt.New(
@@ -122,38 +110,45 @@ func main() {
 		options.Device(device, 0),
 		options.Graph([]byte(graph)),
 		options.Weights([]byte(weights)),
-		options.BatchSize(uint32(batch)))
+		options.BatchSize(uint32(batchSize)))
 	if err != nil {
 		panic(err)
-  }
+	}
 	defer predictor.Close()
 
-  predictor.StartProfiling("predict", "")
+	if nvidiasmi.HasGPU {
+		cu, err := cupti.New(cupti.Context(ctx))
+		if err == nil {
+			defer func() {
+				cu.Wait()
+				cu.Close()
+			}()
+		}
+	}
+	predictor.StartProfiling("predict", "")
 	predictions, err := predictor.Predict(ctx, input)
 	if err != nil {
-		pp.Println(err)
-		os.Exit(-1)
+		panic(err)
 	}
 	predictor.EndProfiling()
 
-  profBuffer, err := predictor.ReadProfile()
+	profBuffer, err := predictor.ReadProfile()
 	if err != nil {
-		pp.Println(err)
-		os.Exit(-1)
+		panic(err)
 	}
 
 	t, err := ctimer.New(profBuffer)
 	if err != nil {
-		pp.Println(err)
-		os.Exit(-1)
+		panic(err)
 	}
+
 	t.Publish(ctx)
 	predictor.DisableProfiling()
 
 	var labels []string
 	f, err := os.Open(features)
 	if err != nil {
-		os.Exit(-1)
+		panic(err)
 	}
 	defer f.Close()
 	scanner := bufio.NewScanner(f)
@@ -162,8 +157,8 @@ func main() {
 		labels = append(labels, line)
 	}
 
-	len := len(predictions) / batch
-	for i := 0; i < cnt; i++ {
+	len := len(predictions) / batchSize
+	for i := 0; i < 1; i++ {
 		res := predictions[i*len : (i+1)*len]
 		res.Sort()
 		pp.Println(res[0].Probability)
