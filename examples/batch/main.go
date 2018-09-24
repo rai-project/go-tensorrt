@@ -88,7 +88,7 @@ func main() {
 		}
 	}
 
-	imgDir, _ := filepath.Abs("./_fixtures")
+	imgDir, _ := filepath.Abs("../_fixtures")
 	imagePath := filepath.Join(imgDir, "platypus.jpg")
 
 	img, err := imgio.Open(imagePath)

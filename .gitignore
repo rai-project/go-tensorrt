@@ -7,3 +7,4 @@ tmp
 tensorrt
 
 .vscode/cquery_cached_index
+main
