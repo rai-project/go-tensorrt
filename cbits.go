@@ -3,15 +3,16 @@
 package tensorrt
 
 // #include <stdlib.h>
-// #include "cbits/predict.hpp"
+// #include "cbits/predictor.hpp"
 import "C"
 import (
-	"encoding/json"
+	"context"
 	"unsafe"
 
 	"github.com/Unknwon/com"
 	"github.com/pkg/errors"
 	"github.com/rai-project/dlframework/framework/options"
+	"github.com/rai-project/tracer"
 )
 
 type Predictor struct {
@@ -19,18 +20,21 @@ type Predictor struct {
 	options *options.Options
 }
 
-func New(opts0 ...options.Option) (*Predictor, error) {
-	opts := options.New(opts0...)
-	modelFile := string(opts.Graph())
+func New(ctx context.Context, opts ...options.Option) (*Predictor, error) {
+	span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_new")
+	defer span.Finish()
+
+	options := options.New(opts...)
+	modelFile := string(options.Graph())
 	if !com.IsFile(modelFile) {
 		return nil, errors.Errorf("file %s not found", modelFile)
 	}
-	weightsFile := string(opts.Weights())
+	weightsFile := string(options.Weights())
 	if !com.IsFile(weightsFile) {
 		return nil, errors.Errorf("file %s not found", weightsFile)
 	}
 
-	if opts.OutputNode() == "" {
+	if options.OutputNode() == "" {
 		return nil, errors.Errorf("expecting a valid (non-empty) output node name")
 	}
 
@@ -40,18 +44,17 @@ func New(opts0 ...options.Option) (*Predictor, error) {
 	weightsFileString := C.CString(weightsFile)
 	defer C.free(unsafe.Pointer(weightsFileString))
 
-	outputNodeString := C.CString(opts.OutputNode())
+	outputNodeString := C.CString(options.OutputNode())
 	defer C.free(unsafe.Pointer(outputNodeString))
 
-	ctx := C.NewTensorRT(
-		modelFileString,
-		weightsFileString,
-		C.int(opts.BatchSize()),
-		outputNodeString,
-	)
 	return &Predictor{
-		ctx:     ctx,
-		options: opts,
+		ctx: C.NewTensorRT(
+			modelFileString,
+			weightsFileString,
+			C.int(options.BatchSize()),
+			outputNodeString,
+		),
+		options: options,
 	}, nil
 }
 
@@ -82,59 +85,77 @@ func (p *Predictor) Predict(inputLayerName0 string, outputLayerName0 string, inp
 	outputLayerName := C.CString(outputLayerName0)
 	defer C.free(unsafe.Pointer(outputLayerName))
 
-	batchSize := int64(p.options.BatchSize())
+	batchSize := p.options.BatchSize()
 	shapeLen := prod(shape)
-	dataLen := int64(len(input)) / shapeLen
-	if batchSize > dataLen {
-		padding := make([]float32, (batchSize-dataLen)*shapeLen)
-		input = append(input, padding...)
+	dataLen := len(data)
+
+	inputCount := dataLen / shapeLen
+	if batchSize > inputCount {
+		padding := make([]float32, (batchSize-inputCount)*shapeLen)
+		data = append(data, padding...)
 	}
 
 	ptr := (*C.float)(unsafe.Pointer(&input[0]))
-	r := C.PredictTensorRT(p.ctx, ptr, inputLayerName, outputLayerName,
-		C.int(p.options.BatchSize()),
-	)
-	if r == nil {
-		return nil, errors.New("failed to perform tensorrt prediction")
-	}
-	defer C.free(unsafe.Pointer(r))
-	js := C.GoString(r)
 
-	predictions := []Prediction{}
-	err := json.Unmarshal([]byte(js), &predictions)
-	if err != nil {
-		return nil, err
-	}
-	return predictions, nil
+	predictSpan, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_predict")
+	defer predictSpan.Finish()
+
+	C.PredictTensorRT(p.ctx, ptr, inputLayerName, outputLayerName, C.int(batchSize))
+
+	return nil
 }
+
+func (p *Predictor) ReadPredictedFeatures(ctx context.Context) Predictions {
+	span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "read_predicted_features")
+	defer span.Finish()
+
+	batchSize := p.options.BatchSize()
+	predLen := int(C.GetPredLenCaffe(p.ctx))
+	length := batchSize * predLen
+
+	cPredictions := C.GetPredictionsCaffe(p.ctx)
+
+	slice := (*[1 << 30]C.float)(unsafe.Pointer(cPredictions))[:length:length]
+
+	predictions := make([]Prediction, length)
+	for ii := 0; ii < length; ii++ {
+		predictions[ii] = Prediction{
+			Index:       ii % predLen,
+			Probability: float32(slice[ii]),
+		}
+	}
+
+	return predictions
+}
+
+func (p Predictor) Close() {
+	C.DeleteTensorRT(p.ctx)
+}
+
 func (p *Predictor) StartProfiling(name, metadata string) error {
 	cname := C.CString(name)
 	cmetadata := C.CString(metadata)
 	defer C.free(unsafe.Pointer(cname))
 	defer C.free(unsafe.Pointer(cmetadata))
-	C.TensorRTStartProfiling(p.ctx, cname, cmetadata)
+	C.StartProfilingTensorRT(p.ctx, cname, cmetadata)
 	return nil
 }
 
 func (p *Predictor) EndProfiling() error {
-	C.TensorRTEndProfiling(p.ctx)
+	C.EndProfilingTensorRT(p.ctx)
 	return nil
 }
 
 func (p *Predictor) DisableProfiling() error {
-	C.TensorRTDisableProfiling(p.ctx)
+	C.DisableProfilingTensorRT(p.ctx)
 	return nil
 }
 
 func (p *Predictor) ReadProfile() (string, error) {
-	cstr := C.TensorRTReadProfile(p.ctx)
+	cstr := C.ReadProfileTensorRT(p.ctx)
 	if cstr == nil {
 		return "", errors.New("failed to read nil profile")
 	}
 	defer C.free(unsafe.Pointer(cstr))
 	return C.GoString(cstr), nil
-}
-
-func (p Predictor) Close() {
-	C.DeleteTensorRT(p.ctx)
 }
