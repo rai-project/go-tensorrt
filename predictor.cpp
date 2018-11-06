@@ -1,4 +1,3 @@
-#define __linux__
 #ifdef __linux__
 #include <algorithm>
 #include <iostream>
@@ -117,39 +116,32 @@ public:
 
 void Predictor::Predict(float *inputData) {
 
-  if (predictor == nullptr) {
-    std::cerr << "tensorrt prediction error on " << __LINE__
-              << " :: null predictor\n";
-    return nullptr;
-  }
-  auto engine = predictor->engine_;
-  if (engine->getNbBindings() != 2) {
+  if (engine_->getNbBindings() != 2) {
     std::cerr << "tensorrt prediction error on " << __LINE__ << "\n";
     return nullptr;
   }
-  auto context = predictor->context_;
-  if (context == nullptr) {
+  if (context_ == nullptr) {
     std::cerr << "tensorrt prediction error on " << __LINE__
-              << " :: null context\n";
+              << " :: null context_\n";
     return nullptr;
   }
 
   // In order to bind the buffers, we need to know the names of the input and
   // output tensors.
   // note that indices are guaranteed to be less than IEngine::getNbBindings()
-  const int input_index = engine->getBindingIndex(input_layer_name_);
-  const int output_index = engine->getBindingIndex(output_layer_name_);
+  const int input_index = engine_->getBindingIndex(input_layer_name_);
+  const int output_index = engine_->getBindingIndex(output_layer_name_);
 
   // std::cerr << "using input layer = " << input_layer_name << "\n";
   // std::cerr << "using output layer = " << output_layer_name << "\n";
 
   const auto input_dim_ =
-      static_cast<DimsCHW &&>(engine->getBindingDimensions(input_index));
+      static_cast<DimsCHW &&>(engine_->getBindingDimensions(input_index));
   const auto input_byte_size =
       batch_ * input_dim_.c() * input_dim_.h() * input_dim_.w() * sizeof(float);
 
   const auto output_dim_ =
-      static_cast<DimsCHW &&>(engine->getBindingDimensions(output_index));
+      static_cast<DimsCHW &&>(engine_->getBindingDimensions(output_index));
   const auto pred_len_ = output_dim_.c() * output_dim_.h() * output_dim_.w();
   const auto output_byte_size = batch_ * pred_len_ * sizeof(float);
 
@@ -171,9 +163,9 @@ void Predictor::Predict(float *inputData) {
   Profiler profiler(predictor->prof_);
 
   // Set the custom profiler.
-  context->setProfiler(&profiler);
+  context_->setProfiler(&profiler);
 
-  context->execute(batchSize, buffers);
+  context_->execute(batchSize, buffers);
 
   CHECK(cudaMemcpy(result_ output_layer, output_byte_size,
                    cudaMemcpyDeviceToHost));
