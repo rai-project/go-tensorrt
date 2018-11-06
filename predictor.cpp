@@ -82,10 +82,10 @@ private:
 class Predictor {
 public:
   Predictor(ICudaEngine *engine, IExecutionContext *context, int batch_size,
-            char *input_layer_name, char *output_layer_name)
+            char *input_layer_name, char *output_layer_name, int shape_len)
       : engine_(engine), context_(context), batch_(batch_size),
         input_layer_name_(input_layer_name),
-        output_layer_name_(output_layer_name){};
+        output_layer_name_(output_layer_name), shape_len_(shape_len){};
 
   void Predict(float *imageData);
 
@@ -108,13 +108,14 @@ public:
   int batch_;
   const char *input_layer_name_;
   const char *output_layer_name_;
+  int shape_len_;
   int pred_len_;
   const float *result_{nullptr};
   profile *prof_{nullptr};
   bool profile_enabled_{false};
 };
 
-void Predictor::Predict(float *input) {
+void Predictor::Predict(float *inputData) {
 
   if (predictor == nullptr) {
     std::cerr << "tensorrt prediction error on " << __LINE__
@@ -136,8 +137,8 @@ void Predictor::Predict(float *input) {
   // In order to bind the buffers, we need to know the names of the input and
   // output tensors.
   // note that indices are guaranteed to be less than IEngine::getNbBindings()
-  const int input_index = engine->getBindingIndex(input_layer_name);
-  const int output_index = engine->getBindingIndex(output_layer_name);
+  const int input_index = engine->getBindingIndex(input_layer_name_);
+  const int output_index = engine->getBindingIndex(output_layer_name_);
 
   // std::cerr << "using input layer = " << input_layer_name << "\n";
   // std::cerr << "using output layer = " << output_layer_name << "\n";
@@ -145,24 +146,24 @@ void Predictor::Predict(float *input) {
   const auto input_dim_ =
       static_cast<DimsCHW &&>(engine->getBindingDimensions(input_index));
   const auto input_byte_size =
-      input_dim_.c() * input_dim_.h() * input_dim_.w() * sizeof(float);
+      batch_ * input_dim_.c() * input_dim_.h() * input_dim_.w() * sizeof(float);
 
   const auto output_dim_ =
       static_cast<DimsCHW &&>(engine->getBindingDimensions(output_index));
-  const auto output_size = output_dim_.c() * output_dim_.h() * output_dim_.w();
-  const auto output_byte_size = output_size * sizeof(float);
+  const auto pred_len_ = output_dim_.c() * output_dim_.h() * output_dim_.w();
+  const auto output_byte_size = batch_ * pred_len_ * sizeof(float);
 
   float *input_layer, *output_layer;
 
-  CHECK(cudaMalloc((void **)&input_layer, batchSize * input_byte_size));
-  CHECK(cudaMalloc((void **)&output_layer, batchSize * output_byte_size));
+  CHECK(cudaMalloc((void **)&input_layer, input_byte_size));
+  CHECK(cudaMalloc((void **)&output_layer, output_byte_size));
 
-  // std::cerr << "size of input = " << batchSize * input_byte_size << "\n";
-  // std::cerr << "size of output = " << batchSize * output_byte_size << "\n";
+  // std::cerr << "size of input = " <<  input_byte_size << "\n";
+  // std::cerr << "size of output = " << output_byte_size << "\n";
 
   // DMA the input to the GPU,  execute the batch_size  asynchronously, and DMA
   // it back:
-  CHECK(cudaMemcpy(input_layer, input, batchSize * input_byte_size,
+  CHECK(cudaMemcpy(input_layer, inputData, input_byte_size,
                    cudaMemcpyHostToDevice));
 
   void *buffers[2] = {input_layer, output_layer};
@@ -174,35 +175,17 @@ void Predictor::Predict(float *input) {
 
   context->execute(batchSize, buffers);
 
-  std::vector<float> output(batchSize * output_size);
-  std::fill(output.begin(), output.end(), 0);
-
-  CHECK(cudaMemcpy(output.data(), output_layer, batchSize * output_byte_size,
+  CHECK(cudaMemcpy(result_ output_layer, output_byte_size,
                    cudaMemcpyDeviceToHost));
 
   // release the stream and the buffers
   CHECK(cudaFree(input_layer));
   CHECK(cudaFree(output_layer));
-
-  // classify image
-  json preds = json::array();
-
-  for (int cnt = 0; cnt < batchSize; cnt++) {
-    for (int idx = 0; idx < output_size; idx++) {
-      preds.push_back(
-          {{"index", idx}, {"probability", output[cnt * output_size + idx]}});
-    }
-  }
-
-  fflush(stderr);
-
-  auto res = strdup(preds.dump().c_str());
-  return res;
 }
 
 PredictorContext NewTensorRT(char *deploy_file, char *weights_file,
                              int batch_size, char *input_layer_name,
-                             char *output_layer_name) {
+                             char *output_layer_name, int shape_len) {
   try {
     IBuilder *builder = createInferBuilder(gLogger);
     INetworkDefinition *network = builder->createNetwork();
@@ -222,12 +205,32 @@ PredictorContext NewTensorRT(char *deploy_file, char *weights_file,
     builder->setMaxWorkspaceSize(20 << 20);
     ICudaEngine *engine = builder->buildCudaEngine(*network);
     IExecutionContext *context = engine->createExecutionContext();
-    Predictor *pred = new Predictor(engine, context, batch_size,
-                                    input_layer_name, output_layer_name);
+    Predictor *pred =
+        new Predictor(engine, context, batch_size, input_layer_name,
+                      output_layer_name, shape_len);
     return (PredictorContext)pred;
   } catch (const std::invalid_argument &ex) {
     return nullptr;
   }
+}
+
+void TensorRTInit() {}
+
+void PredictTensorRT(PredictorContext pred, float *inputData) {
+  auto predictor = (Predictor *)pred;
+  if (predictor == nullptr) {
+    return;
+  }
+  predictor->Predict(inputData);
+  return;
+}
+
+const float *GetPredictionsTensorRT(PredictorContext pred) {
+  auto predictor = (Predictor *)pred;
+  if (predictor == nullptr) {
+    return nullptr;
+  }
+  return predictor->result_;
 }
 
 void DeleteTensorRT(PredictorContext pred) {
@@ -237,99 +240,6 @@ void DeleteTensorRT(PredictorContext pred) {
   }
   delete predictor;
 }
-
-const char *PredictTensorRT(PredictorContext pred, float *input,
-                            const char *input_layer_name,
-                            const char *output_layer_name,
-                            const int batchSize) {
-
-  auto predictor = (Predictor *)pred;
-
-  if (predictor == nullptr) {
-    std::cerr << "tensorrt prediction error on " << __LINE__
-              << " :: null predictor\n";
-    return nullptr;
-  }
-  auto engine = predictor->engine_;
-  if (engine->getNbBindings() != 2) {
-    std::cerr << "tensorrt prediction error on " << __LINE__ << "\n";
-    return nullptr;
-  }
-  auto context = predictor->context_;
-  if (context == nullptr) {
-    std::cerr << "tensorrt prediction error on " << __LINE__
-              << " :: null context\n";
-    return nullptr;
-  }
-
-  // In order to bind the buffers, we need to know the names of the input and
-  // output tensors.
-  // note that indices are guaranteed to be less than IEngine::getNbBindings()
-  const int input_index = engine->getBindingIndex(input_layer_name);
-  const int output_index = engine->getBindingIndex(output_layer_name);
-
-  // std::cerr << "using input layer = " << input_layer_name << "\n";
-  // std::cerr << "using output layer = " << output_layer_name << "\n";
-
-  const auto input_dim_ =
-      static_cast<DimsCHW &&>(engine->getBindingDimensions(input_index));
-  const auto input_byte_size =
-      input_dim_.c() * input_dim_.h() * input_dim_.w() * sizeof(float);
-
-  const auto output_dim_ =
-      static_cast<DimsCHW &&>(engine->getBindingDimensions(output_index));
-  const auto output_size = output_dim_.c() * output_dim_.h() * output_dim_.w();
-  const auto output_byte_size = output_size * sizeof(float);
-
-  float *input_layer, *output_layer;
-
-  CHECK(cudaMalloc((void **)&input_layer, batchSize * input_byte_size));
-  CHECK(cudaMalloc((void **)&output_layer, batchSize * output_byte_size));
-
-  // std::cerr << "size of input = " << batchSize * input_byte_size << "\n";
-  // std::cerr << "size of output = " << batchSize * output_byte_size << "\n";
-
-  // DMA the input to the GPU,  execute the batch_size  asynchronously, and DMA
-  // it back:
-  CHECK(cudaMemcpy(input_layer, input, batchSize * input_byte_size,
-                   cudaMemcpyHostToDevice));
-
-  void *buffers[2] = {input_layer, output_layer};
-
-  Profiler profiler(predictor->prof_);
-
-  // Set the custom profiler.
-  context->setProfiler(&profiler);
-
-  context->execute(batchSize, buffers);
-
-  std::vector<float> output(batchSize * output_size);
-  std::fill(output.begin(), output.end(), 0);
-
-  CHECK(cudaMemcpy(output.data(), output_layer, batchSize * output_byte_size,
-                   cudaMemcpyDeviceToHost));
-
-  // release the stream and the buffers
-  CHECK(cudaFree(input_layer));
-  CHECK(cudaFree(output_layer));
-
-  // classify image
-  json preds = json::array();
-
-  for (int cnt = 0; cnt < batchSize; cnt++) {
-    for (int idx = 0; idx < output_size; idx++) {
-      preds.push_back(
-          {{"index", idx}, {"probability", output[cnt * output_size + idx]}});
-    }
-  }
-
-  fflush(stderr);
-
-  auto res = strdup(preds.dump().c_str());
-  return res;
-}
-
-void TensorRTInit() {}
 
 void TensorRTStartProfiling(PredictorContext pred, const char *name,
                             const char *metadata) {
@@ -370,7 +280,7 @@ void TensorRTDisableProfiling(PredictorContext pred) {
   }
 }
 
-char *TensorRTReadProfile(PredictorContext pred) {
+char *ReadProfileTensorRT(PredictorContext pred) {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr) {
     return strdup("");
@@ -381,6 +291,22 @@ char *TensorRTReadProfile(PredictorContext pred) {
   const auto s = predictor->prof_->read();
   const auto cstr = s.c_str();
   return strdup(cstr);
+}
+
+int GetShapeLenTensorRT(PredictorContext pred) {
+  auto predictor = (Predictor *)pred;
+  if (predictor == nullptr) {
+    return 0;
+  }
+  return predictor->shape_len_;
+}
+
+int GetPredLenTensorRT(PredictorContext pred) {
+  auto predictor = (Predictor *)pred;
+  if (predictor == nullptr) {
+    return 0;
+  }
+  return predictor->pred_len_;
 }
 
 #endif // __linux__

@@ -9,15 +9,15 @@ typedef void *PredictorContext;
 
 PredictorContext NewTensorRT(char *deploy_file, char *weights_file,
                              int batch_size, char *input_layer_name,
-                             char *output_layer_name);
+                             char *output_layer_name, int shape_len);
+
+void InitTensorRT();
 
 void PredictTensorRT(PredictorContext pred, float *imageData);
 
 const float *GetPredictionsTensorRT(PredictorContext pred);
 
 void DeleteTensorRT(PredictorContext pred);
-
-void InitTensorRT();
 
 void StartProfilingTensorRT(PredictorContext pred, const char *name,
                             const char *metadata);
