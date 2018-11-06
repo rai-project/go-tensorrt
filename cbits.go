@@ -111,10 +111,10 @@ func (p *Predictor) ReadPredictedFeatures(ctx context.Context) Predictions {
 	defer span.Finish()
 
 	batchSize := p.options.BatchSize()
-	predLen := int(C.GetPredLenCaffe(p.ctx))
+	predLen := int(C.GetPredLenTensorRT(p.ctx))
 	length := batchSize * predLen
 
-	cPredictions := C.GetPredictionsCaffe(p.ctx)
+	cPredictions := C.GetPredictionsTensorRT(p.ctx)
 
 	slice := (*[1 << 30]C.float)(unsafe.Pointer(cPredictions))[:length:length]
 

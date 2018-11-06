@@ -28,6 +28,10 @@ void DisableProfilingTensorRT(PredictorContext pred);
 
 char *ReadProfileTensorRT(PredictorContext pred);
 
+int GetShapeLenTensorRT(PredictorContext pred);
+
+int GetPredLenTensorRT(PredictorContext pred);
+
 #ifdef __cplusplus
 }
 #endif // __cplusplus
