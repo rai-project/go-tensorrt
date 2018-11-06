@@ -22,10 +22,12 @@ import (
 	"github.com/rai-project/config"
 	"github.com/rai-project/dlframework/framework/options"
 	"github.com/rai-project/downloadmanager"
+	cupti "github.com/rai-project/go-cupti"
 	"github.com/rai-project/go-tensorrt"
 	nvidiasmi "github.com/rai-project/nvidia-smi"
 	"github.com/rai-project/tracer"
-	//_ "github.com/rai-project/tracer/all"
+	_ "github.com/rai-project/tracer/all"
+	"github.com/rai-project/tracer/ctimer"
 
 	_ "github.com/rai-project/tracer/jaeger"
 )
@@ -61,14 +63,12 @@ func cvtImageTo1DArray(src image.Image, mean []float32) ([]float32, error) {
 }
 
 func main() {
+	defer tracer.Close()
+
 	dir, _ := filepath.Abs("../tmp")
 	graph := filepath.Join(dir, "deploy.prototxt")
 	weights := filepath.Join(dir, "bvlc_alexnet.caffemodel")
 	features := filepath.Join(dir, "synset.txt")
-
-	ctx := context.Background()
-
-	defer tracer.Close()
 
 	if _, err := os.Stat(graph); os.IsNotExist(err) {
 		if _, err := downloadmanager.DownloadInto(graph_url, dir); err != nil {
@@ -116,12 +116,11 @@ func main() {
 		panic("no GPU")
 	}
 
+	ctx := context.Background()
+
 	span, ctx := tracer.StartSpanFromContext(ctx, tracer.FULL_TRACE, "tensorrt_example")
 	defer span.Finish()
 
-	//C.cudaProfilerInitialize(C.CString("./prof.txt"), C.CString("./prof.txt"), )
-
-	// create predictor
 	predictor, err := tensorrt.New(
 		options.WithOptions(opts),
 		options.Device(device, 0),
@@ -136,59 +135,70 @@ func main() {
 	}
 	defer predictor.Close()
 
-	// 	if nvidiasmi.HasGPU {
-	// 		cu, err := cupti.New(cupti.Context(ctx))
-	// 		if err == nil {
-	// 			defer func() {
-	// 				cu.Wait()
-	// 				cu.Close()
-	// 			}()
-	// 		}
-	// 	}
-	predictions, err := predictor.Predict("data", "prob", input, []uint32{3, 227, 227})
-	C.cudaProfilerStart()
+	err := predictor.Predict("data", "prob", input, []uint32{3, 227, 227})
+	if err != nil {
+		panic(err)
+	}
+
+	var cu *cupti.CUPTI
+	if nvidiasmi.HasGPU {
+		cu, err = cupti.New(cupti.Context(ctx))
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	predictor.StartProfiling("predict", "")
-	predictions, err = predictor.Predict("data", "prob", input, []uint32{3, 227, 227})
+
+	err = predictor.Predict("data", "prob", input, []uint32{3, 227, 227})
 	if err != nil {
 		panic(err)
 	}
+
 	predictor.EndProfiling()
-	C.cudaProfilerStop()
-	/*
-		profBuffer, err := predictor.ReadProfile()
-		if err != nil {
-			panic(err)
-		}
 
-		t, err := ctimer.New(profBuffer)
-		if err != nil {
-			panic(err)
-		}
+	if nvidiasmi.HasGPU {
+		cu.Wait()
+		cu.Close()
+	}
 
-		t.Publish(ctx)
-		predictor.DisableProfiling()
-	*/
-	var labels []string
-	f, err := os.Open(features)
+	profBuffer, err := predictor.ReadProfile()
 	if err != nil {
 		panic(err)
 	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := scanner.Text()
-		labels = append(labels, line)
-	}
+	predictor.DisableProfiling()
 
-	len := len(predictions) / batchSize
-	for i := 0; i < 1; i++ {
-		res := predictions[i*len : (i+1)*len]
-		res.Sort()
-		pp.Println(res[0].Probability)
-		pp.Println(labels[res[0].Index])
+	t, err := ctimer.New(profBuffer)
+	if err != nil {
+		panic(err)
 	}
+	t.Publish(ctx)
 
-	// os.RemoveAll(dir)
+	predictions := predictor.ReadPredictedFeatures(ctx)
+
+	if true {
+		var labels []string
+		f, err := os.Open(features)
+		if err != nil {
+			panic(err)
+		}
+		defer f.Close()
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			line := scanner.Text()
+			labels = append(labels, line)
+		}
+
+		len := len(predictions) / batchSize
+		for i := 0; i < 1; i++ {
+			res := predictions[i*len : (i+1)*len]
+			res.Sort()
+			pp.Println(res[0].Probability)
+			pp.Println(labels[res[0].Index])
+		}
+	} else {
+		_ = predictions
+	}
 }
 
 func init() {

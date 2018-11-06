@@ -7,6 +7,7 @@ package tensorrt
 import "C"
 import (
 	"context"
+	"fmt"
 	"unsafe"
 
 	"github.com/Unknwon/com"
@@ -18,6 +19,14 @@ import (
 type Predictor struct {
 	ctx     C.PredictorContext
 	options *options.Options
+}
+
+func prod(arry []int) int {
+	accum := int(1)
+	for _, e := range arry {
+		accum *= int(e)
+	}
+	return accum
 }
 
 func New(ctx context.Context, opts ...options.Option) (*Predictor, error) {
@@ -44,49 +53,41 @@ func New(ctx context.Context, opts ...options.Option) (*Predictor, error) {
 	weightsFileString := C.CString(weightsFile)
 	defer C.free(unsafe.Pointer(weightsFileString))
 
+	inputNode := options.InputNodes()[0] // take the first input node
+	inputNodeString := C.CString(inputNode.Key)
+	defer C.free(unsafe.Pointer(inputNodeString))
+
+	if inputNodeString == "" {
+		return nil, errors.New("expecting a valid (non-empty) input layer name")
+	}
+
 	outputNodeString := C.CString(options.OutputNode())
 	defer C.free(unsafe.Pointer(outputNodeString))
+
+	if outputNodeString == "" {
+		return nil, errors.New("expecting a valid (non-empty) output layer name")
+	}
 
 	return &Predictor{
 		ctx: C.NewTensorRT(
 			modelFileString,
 			weightsFileString,
 			C.int(options.BatchSize()),
+			inputNodeString,
 			outputNodeString,
+			C.int(prob(inputNode.Shape)),
 		),
 		options: options,
 	}, nil
 }
 
-func prod(arry []uint32) int64 {
-	accum := int64(1)
-	for _, e := range arry {
-		accum *= int64(e)
+func (p *Predictor) Predict(ctx context.Context, data []float32) error {
+	if data == nil || len(data) < 1 {
+		return fmt.Errorf("intput data nil or empty")
 	}
-	return accum
-}
-
-func (p *Predictor) Predict(inputLayerName0 string, outputLayerName0 string, input []float32, shape []uint32) (Predictions, error) {
-	// log.WithField("input_layer_name", inputLayerName0).
-	// 	WithField("output_layer_name", outputLayerName0).
-	// 	Info("performing tensorrt prediction")
-
-	if inputLayerName0 == "" {
-		return nil, errors.New("expecting a valid (non-empty) input layer name")
-	}
-
-	if outputLayerName0 == "" {
-		return nil, errors.New("expecting a valid (non-empty) output layer name")
-	}
-
-	inputLayerName := C.CString(inputLayerName0)
-	defer C.free(unsafe.Pointer(inputLayerName))
-
-	outputLayerName := C.CString(outputLayerName0)
-	defer C.free(unsafe.Pointer(outputLayerName))
 
 	batchSize := p.options.BatchSize()
-	shapeLen := prod(shape)
+	shapeLen := C.GetShapeLenTensorRT(p.ctx)
 	dataLen := len(data)
 
 	inputCount := dataLen / shapeLen
@@ -95,7 +96,7 @@ func (p *Predictor) Predict(inputLayerName0 string, outputLayerName0 string, inp
 		data = append(data, padding...)
 	}
 
-	ptr := (*C.float)(unsafe.Pointer(&input[0]))
+	ptr := (*C.float)(unsafe.Pointer(&data[0]))
 
 	predictSpan, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_predict")
 	defer predictSpan.Finish()
