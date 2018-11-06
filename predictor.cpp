@@ -214,7 +214,7 @@ PredictorContext NewTensorRT(char *deploy_file, char *weights_file,
   }
 }
 
-void TensorRTInit() {}
+void InitTensorRT() {}
 
 void PredictTensorRT(PredictorContext pred, float *inputData) {
   auto predictor = (Predictor *)pred;
