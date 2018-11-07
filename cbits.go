@@ -54,19 +54,18 @@ func New(ctx context.Context, opts ...options.Option) (*Predictor, error) {
 	defer C.free(unsafe.Pointer(weightsFileString))
 
 	inputNode := options.InputNodes()[0] // take the first input node
-	inputNodeString := C.CString(inputNode.Key)
-	defer C.free(unsafe.Pointer(inputNodeString))
-
-	if inputNodeString == "" {
+	if inputNode.Key() == "" {
 		return nil, errors.New("expecting a valid (non-empty) input layer name")
 	}
+	inputNodeString := C.CString(inputNode.Key())
+	defer C.free(unsafe.Pointer(inputNodeString))
 
-	outputNodeString := C.CString(options.OutputNode())
-	defer C.free(unsafe.Pointer(outputNodeString))
-
-	if outputNodeString == "" {
+	outputNode := options.OutputNode()
+	if outputNode == "" {
 		return nil, errors.New("expecting a valid (non-empty) output layer name")
 	}
+	outputNodeString := C.CString(outputNode)
+	defer C.free(unsafe.Pointer(outputNodeString))
 
 	return &Predictor{
 		ctx: C.NewTensorRT(
@@ -75,7 +74,7 @@ func New(ctx context.Context, opts ...options.Option) (*Predictor, error) {
 			C.int(options.BatchSize()),
 			inputNodeString,
 			outputNodeString,
-			C.int(prob(inputNode.Shape)),
+			C.int(prod(inputNode.Shape())),
 		),
 		options: options,
 	}, nil
@@ -87,7 +86,7 @@ func (p *Predictor) Predict(ctx context.Context, data []float32) error {
 	}
 
 	batchSize := p.options.BatchSize()
-	shapeLen := C.GetShapeLenTensorRT(p.ctx)
+	shapeLen := int(C.GetShapeLenTensorRT(p.ctx))
 	dataLen := len(data)
 
 	inputCount := dataLen / shapeLen
@@ -101,7 +100,7 @@ func (p *Predictor) Predict(ctx context.Context, data []float32) error {
 	predictSpan, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_predict")
 	defer predictSpan.Finish()
 
-	C.PredictTensorRT(p.ctx, ptr, inputLayerName, outputLayerName, C.int(batchSize))
+	C.PredictTensorRT(p.ctx, ptr)
 
 	return nil
 }

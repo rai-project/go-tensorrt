@@ -231,7 +231,7 @@ void DeleteTensorRT(PredictorContext pred) {
   delete predictor;
 }
 
-void TensorRTStartProfiling(PredictorContext pred, const char *name,
+void StartProfilingTensorRT(PredictorContext pred, const char *name,
                             const char *metadata) {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr) {
@@ -250,7 +250,7 @@ void TensorRTStartProfiling(PredictorContext pred, const char *name,
   }
 }
 
-void TensorRTEndProfiling(PredictorContext pred) {
+void EndProfilingTensorRT(PredictorContext pred) {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr) {
     return;
@@ -260,7 +260,7 @@ void TensorRTEndProfiling(PredictorContext pred) {
   }
 }
 
-void TensorRTDisableProfiling(PredictorContext pred) {
+void DisableProfilingTensorRT(PredictorContext pred) {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr) {
     return;
