@@ -22,12 +22,10 @@ import (
 	"github.com/rai-project/config"
 	"github.com/rai-project/dlframework/framework/options"
 	"github.com/rai-project/downloadmanager"
-	cupti "github.com/rai-project/go-cupti"
 	"github.com/rai-project/go-tensorrt"
 	nvidiasmi "github.com/rai-project/nvidia-smi"
 	"github.com/rai-project/tracer"
 	_ "github.com/rai-project/tracer/all"
-	"github.com/rai-project/tracer/ctimer"
 
 	_ "github.com/rai-project/tracer/jaeger"
 )
@@ -115,7 +113,7 @@ func main() {
 
 	ctx := context.Background()
 
-	span, ctx := tracer.StartSpanFromContext(ctx, tracer.FULL_TRACE, "tensorrt_batch")
+	span, ctx := tracer.StartSpanFromContext(ctx, tracer.FULL_TRACE, "tensorrt_batch_nvporf")
 	defer span.Finish()
 
 	predictor, err := tensorrt.New(
@@ -138,35 +136,15 @@ func main() {
 		panic(err)
 	}
 
-	var cu *cupti.CUPTI
-	cu, err = cupti.New(cupti.Context(ctx))
-	if err != nil {
-		panic(err)
-	}
-
-	predictor.StartProfiling("predict", "")
+	C.cudaProfilerStart()
 
 	err = predictor.Predict(ctx, input)
 	if err != nil {
 		panic(err)
 	}
 
-	predictor.EndProfiling()
-
-	cu.Wait()
-	cu.Close()
-
-	profBuffer, err := predictor.ReadProfile()
-	if err != nil {
-		panic(err)
-	}
-	predictor.DisableProfiling()
-
-	t, err := ctimer.New(profBuffer)
-	if err != nil {
-		panic(err)
-	}
-	t.Publish(ctx, tracer.FRAMEWORK_TRACE)
+	C.cudaDeviceSynchronize()
+	C.cudaProfilerStop()
 
 	predictions := predictor.ReadPredictedFeatures(ctx)
 
