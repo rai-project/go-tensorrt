@@ -108,13 +108,10 @@ func main() {
 
 	opts := options.New()
 
-	device := options.CPU_DEVICE
-	if nvidiasmi.HasGPU {
-		device = options.CUDA_DEVICE
-
-	} else {
+	if !nvidiasmi.HasGPU {
 		panic("no GPU")
 	}
+	device := options.CUDA_DEVICE
 
 	ctx := context.Background()
 
@@ -142,11 +139,9 @@ func main() {
 	}
 
 	var cu *cupti.CUPTI
-	if nvidiasmi.HasGPU {
-		cu, err = cupti.New(cupti.Context(ctx))
-		if err != nil {
-			panic(err)
-		}
+	cu, err = cupti.New(cupti.Context(ctx))
+	if err != nil {
+		panic(err)
 	}
 
 	predictor.StartProfiling("predict", "")
@@ -158,10 +153,8 @@ func main() {
 
 	predictor.EndProfiling()
 
-	if nvidiasmi.HasGPU {
-		cu.Wait()
-		cu.Close()
-	}
+	cu.Wait()
+	cu.Close()
 
 	profBuffer, err := predictor.ReadProfile()
 	if err != nil {
