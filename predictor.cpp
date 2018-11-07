@@ -32,7 +32,6 @@ class Logger : public ILogger {
     if (status != 0) {                                                         \
       std::cerr << "Cuda failure on line " << __LINE__                         \
                 << " status =  " << status << "\n";                            \
-      return nullptr;                                                          \
     }                                                                          \
   }
 
@@ -109,21 +108,20 @@ public:
   const char *output_layer_name_;
   int shape_len_;
   int pred_len_;
-  const float *result_{nullptr};
+  float *result_{nullptr};
   profile *prof_{nullptr};
   bool profile_enabled_{false};
 };
 
 void Predictor::Predict(float *inputData) {
+  result_ = nullptr;
 
   if (engine_->getNbBindings() != 2) {
     std::cerr << "tensorrt prediction error on " << __LINE__ << "\n";
-    return nullptr;
   }
   if (context_ == nullptr) {
     std::cerr << "tensorrt prediction error on " << __LINE__
               << " :: null context_\n";
-    return nullptr;
   }
 
   // In order to bind the buffers, we need to know the names of the input and
@@ -160,14 +158,14 @@ void Predictor::Predict(float *inputData) {
 
   void *buffers[2] = {input_layer, output_layer};
 
-  Profiler profiler(predictor->prof_);
+  Profiler profiler(prof_);
 
   // Set the custom profiler.
   context_->setProfiler(&profiler);
 
-  context_->execute(batchSize, buffers);
+  context_->execute(batch_, buffers);
 
-  CHECK(cudaMemcpy(result_ output_layer, output_byte_size,
+  CHECK(cudaMemcpy(result_, output_layer, output_byte_size,
                    cudaMemcpyDeviceToHost));
 
   // release the stream and the buffers
@@ -186,9 +184,9 @@ PredictorContext NewTensorRT(char *deploy_file, char *weights_file,
     const IBlobNameToTensor *blobNameToTensor =
         parser->parse(deploy_file, weights_file, *network, DataType::kFLOAT);
 
-    auto loc = blobNameToTensor->find(outputLayer);
+    auto loc = blobNameToTensor->find(output_layer_name);
     if (loc == nullptr) {
-      std::cerr << "cannot find " << outputLayer << " in blobNameToTensor\n";
+      std::cerr << "cannot find " << output_layer_name << " in blobNameToTensor\n";
       return nullptr;
     }
     network->markOutput(*loc);
