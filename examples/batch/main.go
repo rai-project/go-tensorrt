@@ -122,20 +122,21 @@ func main() {
 	defer span.Finish()
 
 	predictor, err := tensorrt.New(
+		ctx,
 		options.WithOptions(opts),
 		options.Device(device, 0),
 		options.Graph([]byte(graph)),
 		options.Weights([]byte(weights)),
-		options.InputNode("data", []uint32{3, 227, 227}),
+		options.InputNode("data", []int{3, 227, 227}),
 		options.OutputNode("prob"),
-		options.BatchSize(uint32(batchSize)),
+		options.BatchSize(batchSize),
 	)
 	if err != nil {
 		panic(err)
 	}
 	defer predictor.Close()
 
-	err := predictor.Predict("data", "prob", input, []uint32{3, 227, 227})
+	err = predictor.Predict(ctx, input)
 	if err != nil {
 		panic(err)
 	}
@@ -150,7 +151,7 @@ func main() {
 
 	predictor.StartProfiling("predict", "")
 
-	err = predictor.Predict("data", "prob", input, []uint32{3, 227, 227})
+	err = predictor.Predict(ctx, input)
 	if err != nil {
 		panic(err)
 	}
