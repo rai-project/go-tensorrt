@@ -41,6 +41,7 @@ public:
     if (prof_ == nullptr) {
       return;
     }
+    prof_->start(); // reset start time
     current_time_ = prof_->get_start();
   }
 
@@ -80,10 +81,11 @@ private:
 class Predictor {
 public:
   Predictor(ICudaEngine *engine, IExecutionContext *context, int batch_size,
-            char *input_layer_name, char *output_layer_name, int shape_len)
+            std::string input_layer_name, std::string output_layer_name, int shape_len)
       : engine_(engine), context_(context), batch_(batch_size),
         input_layer_name_(input_layer_name),
-        output_layer_name_(output_layer_name), shape_len_(shape_len){};
+        output_layer_name_(output_layer_name), shape_len_(shape_len){   
+};
 
   void Predict(float *imageData);
 
@@ -104,8 +106,8 @@ public:
   ICudaEngine *engine_{nullptr};
   IExecutionContext *context_{nullptr};
   int batch_;
-  const char *input_layer_name_;
-  const char *output_layer_name_;
+  std::string input_layer_name_{nullptr};
+  std::string output_layer_name_{nullptr};
   int shape_len_;
   int pred_len_;
   float *result_{nullptr};
@@ -114,8 +116,6 @@ public:
 };
 
 void Predictor::Predict(float *inputData) {
-  result_ = nullptr;
-
   if (engine_->getNbBindings() != 2) {
     std::cerr << "tensorrt prediction error on " << __LINE__ << "\n";
   }
@@ -127,11 +127,8 @@ void Predictor::Predict(float *inputData) {
   // In order to bind the buffers, we need to know the names of the input and
   // output tensors.
   // note that indices are guaranteed to be less than IEngine::getNbBindings()
-  const int input_index = engine_->getBindingIndex(input_layer_name_);
-  const int output_index = engine_->getBindingIndex(output_layer_name_);
-
-  // std::cerr << "using input layer = " << input_layer_name << "\n";
-  // std::cerr << "using output layer = " << output_layer_name << "\n";
+  const int input_index = engine_->getBindingIndex(input_layer_name_.c_str());
+  const int output_index = engine_->getBindingIndex(output_layer_name_.c_str());
 
   const auto input_dim_ =
       static_cast<DimsCHW &&>(engine_->getBindingDimensions(input_index));
@@ -140,7 +137,7 @@ void Predictor::Predict(float *inputData) {
 
   const auto output_dim_ =
       static_cast<DimsCHW &&>(engine_->getBindingDimensions(output_index));
-  const auto pred_len_ = output_dim_.c() * output_dim_.h() * output_dim_.w();
+  pred_len_ = output_dim_.c() * output_dim_.h() * output_dim_.w();
   const auto output_byte_size = batch_ * pred_len_ * sizeof(float);
 
   float *input_layer, *output_layer;
@@ -148,8 +145,8 @@ void Predictor::Predict(float *inputData) {
   CHECK(cudaMalloc((void **)&input_layer, input_byte_size));
   CHECK(cudaMalloc((void **)&output_layer, output_byte_size));
 
-  // std::cerr << "size of input = " <<  input_byte_size << "\n";
-  // std::cerr << "size of output = " << output_byte_size << "\n";
+  std::cerr << "size of input = " <<  input_byte_size << "\n";
+  std::cerr << "size of output = " << output_byte_size << "\n";
 
   // DMA the input to the GPU,  execute the batch_size  asynchronously, and DMA
   // it back:
@@ -165,8 +162,9 @@ void Predictor::Predict(float *inputData) {
 
   context_->execute(batch_, buffers);
 
-  CHECK(cudaMemcpy(result_, output_layer, output_byte_size,
-                   cudaMemcpyDeviceToHost));
+  result_ = (float *)malloc(output_byte_size);
+  CHECK(cudaMemcpy(
+      result_, output_layer, output_byte_size, cudaMemcpyDeviceToHost));
 
   // release the stream and the buffers
   CHECK(cudaFree(input_layer));
@@ -186,7 +184,8 @@ PredictorContext NewTensorRT(char *deploy_file, char *weights_file,
 
     auto loc = blobNameToTensor->find(output_layer_name);
     if (loc == nullptr) {
-      std::cerr << "cannot find " << output_layer_name << " in blobNameToTensor\n";
+      std::cerr << "cannot find " << output_layer_name
+                << " in blobNameToTensor\n";
       return nullptr;
     }
     network->markOutput(*loc);
@@ -227,6 +226,11 @@ void DeleteTensorRT(PredictorContext pred) {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr) {
     return;
+  }
+
+  if (predictor->result_) {
+    delete[] predictor->result_;
+    predictor->result_ = nullptr;
   }
   delete predictor;
 }
