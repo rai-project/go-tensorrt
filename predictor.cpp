@@ -139,6 +139,10 @@ void Predictor::Predict(float *inputData)
     std::cerr << "tensorrt prediction error on " << __LINE__
               << " :: null context_\n";
   }
+  if (result_ != nullptr) {
+      free(result_);
+      result_ = nullptr;
+  }
 
   // In order to bind the buffers, we need to know the names of the input and
   // output tensors.
@@ -237,7 +241,7 @@ void PredictTensorRT(PredictorContext pred, float *inputData)
   return;
 }
 
-const float *GetPredictionsTensorRT(PredictorContext pred)
+float *GetPredictionsTensorRT(PredictorContext pred)
 {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr)
@@ -257,7 +261,7 @@ void DeleteTensorRT(PredictorContext pred)
 
   if (predictor->result_)
   {
-    delete[] predictor->result_;
+    free(predictor->result_);
     predictor->result_ = nullptr;
   }
   delete predictor;

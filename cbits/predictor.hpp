@@ -15,7 +15,7 @@ void InitTensorRT();
 
 void PredictTensorRT(PredictorContext pred, float *imageData);
 
-const float *GetPredictionsTensorRT(PredictorContext pred);
+float *GetPredictionsTensorRT(PredictorContext pred);
 
 void DeleteTensorRT(PredictorContext pred);
 
