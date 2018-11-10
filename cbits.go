@@ -105,7 +105,7 @@ func (p *Predictor) Predict(ctx context.Context, data []float32) error {
 	return nil
 }
 
-func (p *Predictor) ReadPredictedFeatures(ctx context.Context) Predictions {
+func (p *Predictor) ReadPredictedFeatures(ctx context.Context) (Predictions, error) {
 	span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "read_predicted_features")
 	defer span.Finish()
 
@@ -114,6 +114,9 @@ func (p *Predictor) ReadPredictedFeatures(ctx context.Context) Predictions {
 	length := batchSize * predLen
 
 	cPredictions := C.GetPredictionsTensorRT(p.ctx)
+	if cPredictions == nil {
+		return nil, errors.New("cannot get prediction features")
+	}
 
 	slice := (*[1 << 30]C.float)(unsafe.Pointer(cPredictions))[:length:length]
 
@@ -125,7 +128,7 @@ func (p *Predictor) ReadPredictedFeatures(ctx context.Context) Predictions {
 		}
 	}
 
-	return predictions
+	return predictions, nil
 }
 
 func (p Predictor) Close() {
