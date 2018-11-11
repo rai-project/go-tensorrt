@@ -146,7 +146,7 @@ func main() {
 	C.cudaDeviceSynchronize()
 	C.cudaProfilerStop()
 
-	predictions := predictor.ReadPredictedFeatures(ctx)
+	predictions := predictor.ReadPredictions(ctx)
 
 	if true {
 		var labels []string
