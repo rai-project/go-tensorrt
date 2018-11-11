@@ -14,12 +14,15 @@ import (
 	"image"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/anthonynsimon/bild/imgio"
 	"github.com/anthonynsimon/bild/transform"
 	"github.com/k0kubun/pp"
 
 	"github.com/rai-project/config"
+	"github.com/rai-project/dlframework"
+	"github.com/rai-project/dlframework/framework/feature"
 	"github.com/rai-project/dlframework/framework/options"
 	"github.com/rai-project/downloadmanager"
 	cupti "github.com/rai-project/go-cupti"
@@ -173,39 +176,43 @@ func main() {
 		panic(err)
 	}
 
-	length := len(output)
-	predLen := length / batchSize
+	var labels []string
+	f, err := os.Open(features)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		labels = append(labels, line)
+	}
 
-	predictions := make([]Prediction, length)
-	for ii := 0; ii < length; ii++ {
-		predictions[ii] = Prediction{
-			Index:       ii % predLen,
-			Probability: float32(output[ii]),
+	var features []dlframework.Features
+	featuresLen := len(output) / batchSize
+
+	for ii := 0; ii < batchSize; ii++ {
+		rprobs := make([]*dlframework.Feature, featuresLen)
+		for jj := 0; jj < featuresLen; jj++ {
+			rprobs[jj] = feature.New(
+				feature.ClassificationIndex(int32(jj)),
+				feature.ClassificationName(labels[jj]),
+				feature.Probability(output[ii*featuresLen+jj]),
+			)
 		}
+		sort.Sort(dlframework.Features(rprobs))
+		features = append(features, rprobs)
 	}
 
 	if true {
-		var labels []string
-		f, err := os.Open(features)
-		if err != nil {
-			panic(err)
-		}
-		defer f.Close()
-		scanner := bufio.NewScanner(f)
-		for scanner.Scan() {
-			line := scanner.Text()
-			labels = append(labels, line)
-		}
-
-		len := len(predictions) / batchSize
 		for i := 0; i < 1; i++ {
-			res := predictions[i*len : (i+1)*len]
-			res.Sort()
-			pp.Println(res[0].Probability)
-			pp.Println(labels[res[0].Index])
+			res := features[i*featuresLen : (i+1)*len][0]
+			classification := res.Feature.(*dlframework.Feature_Classification)
+			pp.Println(res.Probability)
+			pp.Println(classification.GetClassification().GetName())
 		}
 	} else {
-		_ = predictions
+		_ = features
 	}
 }
 
