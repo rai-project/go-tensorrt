@@ -25,8 +25,8 @@ func (p *Predictor) Predict(ctx context.Context, input []float32) error {
 	return invalidSystemError
 }
 
-func (p *Predictor) ReadPredictionOutput(ctx context.Context) []float32 {
-	return nil
+func (p *Predictor) ReadPredictionProbabilites(ctx context.Context) ([]float32, error) {
+	return nil, nil
 }
 
 func (p *Predictor) StartProfiling(name, metadata string) error {
