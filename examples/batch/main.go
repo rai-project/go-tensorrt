@@ -168,7 +168,10 @@ func main() {
 	}
 	t.Publish(ctx, tracer.FRAMEWORK_TRACE)
 
-	predictions := predictor.ReadPredictedFeatures(ctx)
+	predictions, err := predictor.ReadPredictions(ctx)
+	if err != nil {
+		panic(err)
+	}
 
 	if true {
 		var labels []string
