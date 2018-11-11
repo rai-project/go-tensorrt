@@ -30,7 +30,7 @@ func prod(arry []int) int {
 }
 
 func New(ctx context.Context, opts ...options.Option) (*Predictor, error) {
-	span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_new")
+	span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "new")
 	defer span.Finish()
 
 	options := options.New(opts...)
@@ -97,16 +97,15 @@ func (p *Predictor) Predict(ctx context.Context, data []float32) error {
 
 	ptr := (*C.float)(unsafe.Pointer(&data[0]))
 
-	predictSpan, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_predict")
-	defer predictSpan.Finish()
-
+	predictSpan, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "predict")
 	C.PredictTensorRT(p.ctx, ptr)
+	predictSpan.Finish()
 
 	return nil
 }
 
-func (p *Predictor) ReadPredictedFeatures(ctx context.Context) Predictions {
-	span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "read_predicted_features")
+func (p *Predictor) ReadPredictions(ctx context.Context) (Predictions, error) {
+	span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "read_predictions")
 	defer span.Finish()
 
 	batchSize := p.options.BatchSize()
@@ -115,7 +114,7 @@ func (p *Predictor) ReadPredictedFeatures(ctx context.Context) Predictions {
 
 	cPredictions := C.GetPredictionsTensorRT(p.ctx)
 	if cPredictions == nil {
-		return nil
+		return nil, errors.New("empty predictions")
 	}
 
 	slice := (*[1 << 30]C.float)(unsafe.Pointer(cPredictions))[:length:length]
@@ -128,7 +127,7 @@ func (p *Predictor) ReadPredictedFeatures(ctx context.Context) Predictions {
 		}
 	}
 
-	return predictions
+	return predictions, nil
 }
 
 func (p Predictor) Close() {

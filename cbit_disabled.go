@@ -25,7 +25,7 @@ func (p *Predictor) Predict(ctx context.Context, input []float32) error {
 	return invalidSystemError
 }
 
-func (p *Predictor) ReadPredictedFeatures(ctx context.Context) Predictions {
+func (p *Predictor) ReadPredictions(ctx context.Context) Predictions {
 	return nil
 }
 
