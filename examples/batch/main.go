@@ -188,7 +188,7 @@ func main() {
 		labels = append(labels, line)
 	}
 
-	var features []dlframework.Features
+	features := make([]dlframework.Features, batchSize)
 	featuresLen := len(output) / batchSize
 
 	for ii := 0; ii < batchSize; ii++ {
@@ -201,7 +201,7 @@ func main() {
 			)
 		}
 		sort.Sort(dlframework.Features(rprobs))
-		features = append(features, rprobs)
+		features[ii] = rprobs
 	}
 
 	if true {
