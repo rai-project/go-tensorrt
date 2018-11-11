@@ -117,7 +117,7 @@ func (p *Predictor) ReadPredictionOutput(ctx context.Context) ([]float32, error)
 		return nil, errors.New("empty predictions")
 	}
 
-	slice := (*[1 << 30]C.float)(unsafe.Pointer(cPredictions))[:length:length]
+	slice := (*[1 << 30]float32)(unsafe.Pointer(cPredictions))[:length:length]
 
 	return slice, nil
 }
