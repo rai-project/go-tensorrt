@@ -36,10 +36,10 @@ import (
 )
 
 var (
-	batchSize    = 64
-	graph_url    = "https://raw.githubusercontent.com/BVLC/caffe/master/models/bvlc_alexnet/deploy.prototxt"
-	weights_url  = "http://dl.caffe.berkeleyvision.org/bvlc_alexnet.caffemodel"
-	features_url = "http://data.dmlc.ml/mxnet/models/imagenet/synset.txt"
+	batchSize   = 64
+	graph_url   = "https://raw.githubusercontent.com/BVLC/caffe/master/models/bvlc_alexnet/deploy.prototxt"
+	weights_url = "http://dl.caffe.berkeleyvision.org/bvlc_alexnet.caffemodel"
+	synset_url  = "http://data.dmlc.ml/mxnet/models/imagenet/synset.txt"
 )
 
 // convert go Image to 1-dim array
@@ -71,7 +71,7 @@ func main() {
 	dir, _ := filepath.Abs("../tmp")
 	graph := filepath.Join(dir, "deploy.prototxt")
 	weights := filepath.Join(dir, "bvlc_alexnet.caffemodel")
-	features := filepath.Join(dir, "synset.txt")
+	synset := filepath.Join(dir, "synset.txt")
 
 	if _, err := os.Stat(graph); os.IsNotExist(err) {
 		if _, err := downloadmanager.DownloadInto(graph_url, dir); err != nil {
@@ -84,9 +84,9 @@ func main() {
 			panic(err)
 		}
 	}
-	if _, err := os.Stat(features); os.IsNotExist(err) {
+	if _, err := os.Stat(synset); os.IsNotExist(err) {
 
-		if _, err := downloadmanager.DownloadInto(features_url, dir); err != nil {
+		if _, err := downloadmanager.DownloadInto(synset_url, dir); err != nil {
 			panic(err)
 		}
 	}
@@ -177,7 +177,7 @@ func main() {
 	}
 
 	var labels []string
-	f, err := os.Open(features)
+	f, err := os.Open(synset)
 	if err != nil {
 		panic(err)
 	}
@@ -206,10 +206,10 @@ func main() {
 
 	if true {
 		for i := 0; i < 1; i++ {
-			res := features[i*featuresLen : (i+1)*len][0]
-			classification := res.Feature.(*dlframework.Feature_Classification)
-			pp.Println(res.Probability)
-			pp.Println(classification.GetClassification().GetName())
+			results := features[i]
+			top1 := results[0]
+			pp.Println(top1.Probability)
+			pp.Println(top1.GetClassification().GetName())
 		}
 	} else {
 		_ = features
