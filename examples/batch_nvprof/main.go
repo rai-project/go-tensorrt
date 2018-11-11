@@ -146,9 +146,20 @@ func main() {
 	C.cudaDeviceSynchronize()
 	C.cudaProfilerStop()
 
-	predictions, err := predictor.ReadPredictions(ctx)
+	output, err := predictor.ReadPredictionOutput(ctx)
 	if err != nil {
 		panic(err)
+	}
+
+	length := len(output)
+	predLen := length / batchSize
+
+	predictions := make([]Prediction, length)
+	for ii := 0; ii < length; ii++ {
+		predictions[ii] = Prediction{
+			Index:       ii % predLen,
+			Probability: float32(output[ii]),
+		}
 	}
 
 	if true {
