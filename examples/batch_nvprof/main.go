@@ -174,7 +174,7 @@ func main() {
 		for jj := 0; jj < featuresLen; jj++ {
 			rprobs[jj] = feature.New(
 				feature.ClassificationIndex(int32(jj)),
-				feature.ClassificationName(labels[jj]),
+				feature.ClassificationLabel(labels[jj]),
 				feature.Probability(output[ii*featuresLen+jj]),
 			)
 		}
