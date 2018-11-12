@@ -25,7 +25,7 @@ func (p *Predictor) Predict(ctx context.Context, input []float32) error {
 	return invalidSystemError
 }
 
-func (p *Predictor) ReadPredictionProbabilites(ctx context.Context) ([]float32, error) {
+func (p *Predictor) ReadPredictionOutput(ctx context.Context) ([]float32, error) {
 	return nil, nil
 }
 
