@@ -30,7 +30,7 @@ func prod(arry []int) int {
 }
 
 func New(ctx context.Context, opts ...options.Option) (*Predictor, error) {
-	span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "new")
+	span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_new")
 	defer span.Finish()
 
 	options := options.New(opts...)
@@ -97,7 +97,7 @@ func (p *Predictor) Predict(ctx context.Context, data []float32) error {
 
 	ptr := (*C.float)(unsafe.Pointer(&data[0]))
 
-	predictSpan, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "predict")
+	predictSpan, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_predict")
 	C.PredictTensorRT(p.ctx, ptr)
 	predictSpan.Finish()
 
@@ -105,7 +105,7 @@ func (p *Predictor) Predict(ctx context.Context, data []float32) error {
 }
 
 func (p *Predictor) ReadPredictionOutput(ctx context.Context) ([]float32, error) {
-	span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "read_prediction_output")
+	span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_read_prediction_output")
 	defer span.Finish()
 
 	batchSize := p.options.BatchSize()
