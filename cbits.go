@@ -97,9 +97,9 @@ func (p *Predictor) Predict(ctx context.Context, data []float32) error {
 
 	ptr := (*C.float)(unsafe.Pointer(&data[0]))
 
-	predictSpan, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_predict")
+	span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_predict")
 	C.PredictTensorRT(p.ctx, ptr)
-	predictSpan.Finish()
+	span.Finish()
 
 	return nil
 }
