@@ -25,7 +25,8 @@ LABEL org.carml.go-tensorrt.build-date=$BUILD_DATE \
 
 COPY $DEB_PATH /tmp/tensorrt.deb
 
-RUN wget -qO tensorrt.deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1604/x86_64/nvinfer-runtime-trt-repo-ubuntu1604-4.0.1-ga-cuda9.0_1-1_amd64.deb && \
+#RUN wget -qO tensorrt.deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1604/x86_64/nvinfer-runtime-trt-repo-ubuntu1604-4.0.1-ga-cuda9.0_1-1_amd64.deb && \
+RUN dpkg -i /tmp/tensorrt.deb && \
     apt-get update && \
     apt-get install -y --no-install-recommends --allow-downgrades \
         tensorrt \
