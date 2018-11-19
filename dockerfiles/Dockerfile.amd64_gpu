@@ -25,11 +25,11 @@ LABEL org.carml.go-tensorrt.build-date=$BUILD_DATE \
 
 COPY $DEB_PATH /tmp/tensorrt.deb
 
-RUN wget -qO tensorrt.deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1604/x86_64/nvinfer-runtime-trt-repo-ubuntu1604-4.0.1-ga-cuda9.0_1-1_amd64.deb && \ 
+RUN wget -qO tensorrt.deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1604/x86_64/nvinfer-runtime-trt-repo-ubuntu1604-4.0.1-ga-cuda9.0_1-1_amd64.deb && \
     apt-get update && \
     apt-get install -y --no-install-recommends --allow-downgrades \
-        tensorrt \ 
-        libnvinfer-dev \ 
+        tensorrt \
+        libnvinfer-dev \
         ca-certificates && \
     rm -rf /var/lib/apt/lists/* /tmp/tensorrt.deb
 
@@ -38,9 +38,7 @@ ENV PKG github.com/rai-project/go-tensorrt
 WORKDIR $GOPATH/src/$PKG
 
 RUN git clone --depth=1 --branch=master https://${PKG}.git . && \
-    dep ensure && \
-    rm -fr vendor/github.com/Sirupsen && \
-    find vendor -type f -exec sed -i 's/Sirupsen/sirupsen/g' {} + && \
+    dep ensure -v && \
     go build -a -installsuffix cgo -ldflags "-s -w -X ${PKG}/Version=${VERSION} -X ${PKG}/GitCommit=${VCS_REF} -X ${PKG}/BuildDate=${BUILD_DATE}"&& \
     go install && \
     rm -fr vendor
