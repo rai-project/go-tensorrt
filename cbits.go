@@ -1,4 +1,7 @@
-// +build linux,!ppc64le
+// +build linux
+// +build !ppc64le
+// +build !nogpu
+// +build cgo
 
 package tensorrt
 
