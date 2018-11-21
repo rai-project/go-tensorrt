@@ -70,8 +70,8 @@
   version = "1.2.2"
 
 [[constraint]]
+  branch = "master"
   name = "github.com/rai-project/tracer"
-  version = "0.2.0"
 
 [prune]
   go-tests = true
