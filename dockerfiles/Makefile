@@ -4,6 +4,9 @@ default: docker_build_gpu
 # Build Docker image
 build: docker_build output
 
+# Build Docker image
+push: docker_push output
+
 # Build and push Docker image
 release: docker_build docker_push
 
