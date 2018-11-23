@@ -2,28 +2,35 @@
 // +build !ppc64le
 // +build !nogpu
 // +build cgo
+
 package tensorrt
 
 import (
+	"context"
 	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
+	"github.com/rai-project/config"
+
 	"github.com/GeertJohan/go-sourcepath"
-	"github.com/k0kubun/pp"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/rai-project/dlframework"
+	"github.com/rai-project/dlframework/framework/feature"
 	"github.com/rai-project/dlframework/framework/options"
 	"github.com/rai-project/image"
 	"github.com/rai-project/image/types"
 )
 
 var (
+	batchSize       = 1
 	thisDir         = sourcepath.MustAbsoluteDir()
-	classFilePath   = filepath.Join(thisDir, "_fixtures", "networks", "ilsvrc12_synset_words.txt")
+	labelFilePath   = filepath.Join(thisDir, "_fixtures", "networks", "ilsvrc12_synset_words.txt")
 	graphFilePath   = filepath.Join(thisDir, "_fixtures", "networks", "googlenet.prototxt")
 	weightsFilePath = filepath.Join(thisDir, "_fixtures", "networks", "bvlc_googlenet.caffemodel")
 )
@@ -60,39 +67,69 @@ func TestTensorRT(t *testing.T) {
 		}
 	}
 
-	pred, err := New(
+	ctx := context.Background()
+	predictor, err := New(
+		ctx,
 		options.Graph([]byte(graphFilePath)),
 		options.Weights([]byte(weightsFilePath)),
 		options.BatchSize(1),
-		options.InputNode("data", []uint32{3, 224, 224}),
+		options.InputNode("data", []int{3, 224, 224}),
 		options.OutputNode("prob"),
 	)
 	if err != nil {
 		t.Errorf("tensorRT initiate failed %v", err)
 	}
 
-	defer pred.Close()
+	defer predictor.Close()
 
-	result, err := pred.Predict("data", "prob", imgArray, []uint32{3, 224, 224})
+	err = predictor.Predict(ctx, imgArray)
 	if err != nil {
 		t.Errorf("tensorRT inference failed %v", err)
 	}
 
-	result.Sort()
+	output, err := predictor.ReadPredictionOutput(ctx)
+	if err != nil {
+		panic(err)
+	}
 
-	classesFileContent, err := ioutil.ReadFile(classFilePath)
+	labelsFileContent, err := ioutil.ReadFile(labelFilePath)
 	assert.NoError(t, err)
+	labels := strings.Split(string(labelsFileContent), "\n")
 
-	classes := strings.Split(string(classesFileContent), "\n")
+	features := make([]dlframework.Features, batchSize)
+	featuresLen := len(output) / batchSize
 
-	// pp.Println(result[:10])
-	assert.Equal(t, 281, result[0].Index)
+	for ii := 0; ii < batchSize; ii++ {
+		rprobs := make([]*dlframework.Feature, featuresLen)
+		for jj := 0; jj < featuresLen; jj++ {
+			rprobs[jj] = feature.New(
+				feature.ClassificationIndex(int32(jj)),
+				feature.ClassificationLabel(labels[jj]),
+				feature.Probability(output[ii*featuresLen+jj]),
+			)
+		}
+		sort.Sort(dlframework.Features(rprobs))
+		features[ii] = rprobs
+	}
 
-	pp.Println(result[0])
-	if classes[result[0].Index] != "n02123045 tabby, tabby cat" {
+	top1 := features[0][0]
+
+	assert.Equal(t, int32(281), top1.GetClassification().GetIndex())
+
+	if top1.GetClassification().GetLabel() != "n02123045 tabby, tabby cat" {
 		t.Errorf("tensorRT class label wrong")
 	}
-	if math.Abs(float64(result[0].Probability-0.5)) < .001 {
+	if math.Abs(float64(top1.GetProbability()-0.324)) > .001 {
 		t.Errorf("tensorRT class probablity wrong")
 	}
+}
+
+func TestMain(m *testing.M) {
+	config.Init(
+		config.AppName("carml"),
+		config.VerboseMode(true),
+		config.DebugMode(true),
+	)
+
+	os.Exit(m.Run())
 }
