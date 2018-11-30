@@ -23,13 +23,15 @@ LABEL org.mlmodelscope.go-tensorrt.build-date=$BUILD_DATE \
 
 ########## TENSORRT INSTALLATION ###################
 
-# COPY $DEB_PATH /tmp/tensorrt.deb
+COPY $DEB_PATH /tmp/tensorrt.deb
 
-RUN wget -qO tensorrt.deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1604/x86_64/nvinfer-runtime-trt-repo-ubuntu1604-5.0.2-ga-cuda10.0_1-1_amd64.deb && \
-  dpkg -i /tmp/tensorrt.deb && \
+#RUN cd /tmp/ && wget -q -O tensorrt.deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64/nvinfer-runtime-trt-repo-ubuntu1804-5.0.2-ga-cuda10.0_1-1_amd64.deb
+  
+RUN dpkg -i /tmp/tensorrt.deb && \
   apt-get update && \
-  apt-get install -y --no-install-recommends --allow-downgrades \
-  tensorrt \
+	dpkg-query -W | grep cuda-cublas && \
+  apt-get install -y --no-install-recommends \
+	tensorrt \
   libnvinfer-dev \
   ca-certificates && \
   rm -rf /var/lib/apt/lists/* /tmp/tensorrt.deb
@@ -40,6 +42,6 @@ WORKDIR $GOPATH/src/$PKG
 
 RUN git clone --depth=1 --branch=master https://${PKG}.git . && \
   dep ensure -v && \
-  go build -a -installsuffix cgo -ldflags "-s -w -X ${PKG}/Version=${VERSION} -X ${PKG}/GitCommit=${VCS_REF} -X ${PKG}/BuildDate=${BUILD_DATE}"&& \
+  go build -a -tags=!nogpu -installsuffix cgo -ldflags "-s -w -X ${PKG}/Version=${VERSION} -X ${PKG}/GitCommit=${VCS_REF} -X ${PKG}/BuildDate=${BUILD_DATE}"&& \
   go install && \
   rm -fr vendor
