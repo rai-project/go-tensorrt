@@ -34,10 +34,6 @@
   version = "1.0.0"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/ianlancetaylor/cgosymbolizer"
-
-[[constraint]]
   name = "github.com/k0kubun/pp"
   version = "2.3.0"
 
