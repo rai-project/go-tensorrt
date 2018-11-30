@@ -1,0 +1,16 @@
+jobs:
+  - job: GPU
+    pool:
+      vmImage: 'Ubuntu 16.04'
+    steps:
+      - bash: |
+          docker login -u $(DOCKER_USERNAME) -p $(DOCKER_PASSWORD)
+          cd dockerfiles
+          make docker_pull_gpu
+          make docker_build_gpu
+          ./push_gpu.sh
+  - job: Update_Microbadger
+    dependsOn:
+      - GPU
+    steps:
+      - script: 'curl -X POST https://hooks.microbadger.com/images/carml/go-tensorrt/CgbncOhzgfFVOik6PkQhhOzTeWg='
