@@ -590,7 +590,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2207b8282a029d52e151e25e3fd3c6b3398537ffc2e07e84c234a6def46cddf8"
+  digest = "1:120a56c1dcb24fd6c630d2b96d2f9624c745933e2f8a3c6391c31316a6794338"
   name = "github.com/rai-project/dlframework"
   packages = [
     ".",
@@ -598,7 +598,7 @@
     "framework/options",
   ]
   pruneopts = "UT"
-  revision = "b8d851c8bb8ceac5008e880287a4c29ba1cb39f3"
+  revision = "d9c6d2f73991324e5d3d3e1ef51f94649d2d0645"
 
 [[projects]]
   branch = "master"
@@ -637,7 +637,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:226991730a22cf143ea386e9c6d2c5959e8638259a6cd55dd2db9ce2de90c62a"
+  digest = "1:6d12e4ac826b32048cd5c6c1b3461f78349c43837e5ea92a449699d7639121b9"
   name = "github.com/rai-project/image"
   packages = [
     ".",
@@ -645,7 +645,7 @@
     "types",
   ]
   pruneopts = "UT"
-  revision = "2a6c79dddde871ec316483ace896a3cc0d18510b"
+  revision = "a6ebd1b24d2fcf25e9edaac659cd338eb539314a"
 
 [[projects]]
   branch = "master"
@@ -753,8 +753,8 @@
     "mem",
   ]
   pruneopts = "UT"
-  revision = "3ec50d2876a36047b2ca39f955ba88fb7a455e92"
-  version = "v2.18.10"
+  revision = "0f70a4a06f7a1039305ec9b3ba9c2800f8929fba"
+  version = "v2.18.11"
 
 [[projects]]
   digest = "1:69b1cc331fca23d702bd72f860c6a647afd0aa9fcbc1d0659b1365e26546dd70"
@@ -910,7 +910,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:6ca51c5d8a610b3da56856df7a8f8f3e075eba8d5f7a4acbadd79b2d2a368054"
+  digest = "1:7a2e3d6819e7a97a877f8604e737901c6941e76d56ae98a51a1ca2f13de351fb"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -922,7 +922,7 @@
     "trace",
   ]
   pruneopts = "UT"
-  revision = "fae4c4e3ad76c295c3d6d259f898136b4bf833a8"
+  revision = "351d144fa1fc0bd934e2408202be0c29f25e35a0"
 
 [[projects]]
   branch = "master"
