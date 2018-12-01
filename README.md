@@ -1,6 +1,5 @@
 # Go Bindings for TensorRT
-
-[![Build Status](https://dev.azure.com/dakkak/rai/_apis/build/status/rai-project.go-tensorrt)](https://dev.azure.com/dakkak/rai/_build/latest?definitionId=9)
+[![Build Status](https://dev.azure.com/dakkak/rai/_apis/build/status/go-tensorrt)](https://dev.azure.com/dakkak/rai/_build/latest?definitionId=18)
 [![Build Status](https://travis-ci.org/rai-project/go-tensorrt.svg?branch=master)](https://travis-ci.org/rai-project/go-tensorrt)[![Go Report Card](https://goreportcard.com/badge/github.com/rai-project/go-tensorrt)](https://goreportcard.com/report/github.com/rai-project/go-tensorrt)[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 [![](https://images.microbadger.com/badges/version/carml/go-tensorrt:amd64-gpu-latest.svg)](https://microbadger.com/images/carml/go-tensorrt:amd64-gpu-latest 'Get your own version badge on microbadger.com')
