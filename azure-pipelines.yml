@@ -1,5 +1,6 @@
 jobs:
   - job: GPU
+    timeoutInMinutes: 0
     pool:
       vmImage: 'Ubuntu 16.04'
     steps:
