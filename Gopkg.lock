@@ -72,7 +72,7 @@
   revision = "eb2c6b5be1b66bab83016e0b05f01b8d5496ffbd"
 
 [[projects]]
-  digest = "0:"
+  digest = "1:35768db37daed3f5e0535a68e7dba84dc60ad2a8cedb371e4862b25fc043c243"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -240,7 +240,7 @@
   version = "v1.4.7"
 
 [[projects]]
-  digest = "0:"
+  digest = "1:4062bc6de62d73e2be342243cf138cf499b34d558876db8d9430e2149388a4d8"
   name = "github.com/go-logfmt/logfmt"
   packages = ["."]
   pruneopts = "UT"
@@ -273,7 +273,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "0:"
+  digest = "1:99186569be6cdcc0d15fb5c9094d15b9e551f8d0e967ed7a09692ab05c6b263b"
   name = "github.com/golang/protobuf"
   packages = [
     "jsonpb",
@@ -589,7 +589,8 @@
   revision = "5bc145cba8e061843bd1e71b6c4450d59578554c"
 
 [[projects]]
-  digest = "0:"
+  branch = "master"
+  digest = "1:2207b8282a029d52e151e25e3fd3c6b3398537ffc2e07e84c234a6def46cddf8"
   name = "github.com/rai-project/dlframework"
   packages = [
     ".",
@@ -597,7 +598,7 @@
     "framework/options",
   ]
   pruneopts = "UT"
-  revision = "c3e36d46e02760804a69fb48e96989d813d477fa"
+  revision = "b8d851c8bb8ceac5008e880287a4c29ba1cb39f3"
 
 [[projects]]
   branch = "master"
@@ -688,7 +689,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "0:"
+  digest = "1:a63b1aaa688923c1ec643503be8e525165d42553ac661ee8af23bed47291b014"
   name = "github.com/rai-project/tracer"
   packages = [
     ".",
@@ -884,7 +885,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "0:"
+  digest = "1:b4efd918155a5c1fd54aa057cda0db5f5256bc4f13d8e09fa1cc86b3d62e6f72"
   name = "golang.org/x/crypto"
   packages = [
     "cast5",
@@ -909,7 +910,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "0:"
+  digest = "1:6ca51c5d8a610b3da56856df7a8f8f3e075eba8d5f7a4acbadd79b2d2a368054"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -933,7 +934,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "0:"
+  digest = "1:0c7cb58af944f9690af91474a75371eecfe54c1ce3771a8dc08924430ee785d3"
   name = "golang.org/x/sys"
   packages = [
     "unix",
@@ -967,7 +968,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "0:"
+  digest = "1:ec1919b8b80839559effbe3eabcebf92238d12d3dd9182e51deb5da3ed12e5e9"
   name = "google.golang.org/genproto"
   packages = [
     "googleapis/api/annotations",
@@ -1023,7 +1024,7 @@
   revision = "9856a29383ce1c59f308dd1cf0363a79b5bef6b5"
 
 [[projects]]
-  digest = "0:"
+  digest = "1:4d2e5a73dc1500038e504a8d78b986630e3626dc027bc030ba5c75da257cdb96"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   pruneopts = "UT"

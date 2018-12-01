@@ -46,7 +46,7 @@
   name = "github.com/rai-project/config"
 
 [[constraint]]
-  revision = "c3e36d46e02760804a69fb48e96989d813d477fa"
+  branch = "master"
   name = "github.com/rai-project/dlframework"
 
 [[constraint]]
