@@ -56,12 +56,12 @@
   version = "v0.10.0"
 
 [[projects]]
-  digest = "1:e64acfe8cda1955db545ede8e863c54d69f1ac6cd058df4349be4040320840fd"
+  branch = "master"
+  digest = "0:"
   name = "github.com/apache/thrift"
   packages = ["lib/go/thrift"]
   pruneopts = "UT"
-  revision = "327ebb6c2b6df8bf075da02ef45a2a034e9b79ba"
-  version = "0.11.0"
+  revision = "17a9cffabb746f7dc481a5af9d8a1aeeda537fb6"
 
 [[projects]]
   branch = "master"
