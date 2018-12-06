@@ -8,14 +8,13 @@ ARG VCS_URL
 ARG VERSION
 ARG ARCH
 ARG FRAMEWORK_VERSION
-ARG DEB_PATH
 LABEL org.mlmodelscope.go-tensorrt.build-date=$BUILD_DATE \
   org.mlmodelscope.go-tensorrt.name="go-tensorrt bindings for go with cuda support" \
   org.mlmodelscope.go-tensorrt.description="" \
   org.mlmodelscope.go-tensorrt.url="https://www.mlmodelscope.org/" \
   org.mlmodelscope.go-tensorrt.vcs-ref=$VCS_REF \
   org.mlmodelscope.go-tensorrt.vcs-url=$VCS_URL \
-  org.mlmodelscope.go-tensorrt.vendor="CarML" \
+  org.mlmodelscope.go-tensorrt.vendor="MLModelScope" \
   org.mlmodelscope.go-tensorrt.arch=$ARCH \
   org.mlmodelscope.go-tensorrt.version=$VERSION \
   org.mlmodelscope.go-tensorrt.framework_version=$FRAMEWORK_VERSION \
@@ -23,16 +22,11 @@ LABEL org.mlmodelscope.go-tensorrt.build-date=$BUILD_DATE \
 
 ########## TENSORRT INSTALLATION ###################
 
-RUN cd /tmp/ && \
-  wget -q -O tensorrt.deb https://s3.amazonaws.com/store.carml.org/assets/nv-tensorrt-repo-ubuntu1804-cuda10.0-trt5.0.0.10-rc-20180906_1-1_amd64.deb && \
-  dpkg -i /tmp/tensorrt.deb && \
-  apt-key add /var/nv-tensorrt-repo-cudax.x-trt5.0.0.10-rc-20180906_1-1_amd64/7fa2af80.pub && \
-  apt-get update && \
-  apt-get install tensorrt && \
-  apt-get install python-libnvinfer-dev && \
-  apt-get install uff-converter-tf
+RUN cd /tmp/ && wget -q -O tensorrt.deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64/nvinfer-runtime-trt-repo-ubuntu1804-${FRAMEWORK_VERSION}-ga-cuda10.0_1-1_amd64.deb
 
-RUN dpkg -l | grep TensorRT && \
+RUN dpkg -i /tmp/tensorrt.deb && \
+  apt-get update && \
+  apt-get install -y --no-install-recommends libnvinfer-dev && \
   rm -rf /var/lib/apt/lists/* /tmp/tensorrt.deb
 
 ########## GO BINDING INSTALLATION ###################
@@ -40,7 +34,7 @@ ENV PKG github.com/rai-project/go-tensorrt
 WORKDIR $GOPATH/src/$PKG
 
 RUN git clone --depth=1 --branch=master https://${PKG}.git . && \
-  dep ensure -v && \
+  dep ensure -v -vendor-only && \
   go build -a -installsuffix cgo -ldflags "-s -w -X ${PKG}/Version=${VERSION} -X ${PKG}/GitCommit=${VCS_REF} -X ${PKG}/BuildDate=${BUILD_DATE}"&& \
   go install && \
   rm -fr vendor
