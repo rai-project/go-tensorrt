@@ -24,7 +24,7 @@ LABEL org.mlmodelscope.go-tensorrt.build-date=$BUILD_DATE \
 ########## TENSORRT INSTALLATION ###################
 
 RUN cd /tmp/ && \
-  wget -q -O tensorrt.deb https://developer.nvidia.com/compute/machine-learning/tensorrt/5.0/rc/nv-tensorrt-repo-ubuntu1804-cuda10.0-trt5.0.0.10-rc-20180906_1-1_amd64 && \
+  wget -q -O tensorrt.deb https://s3.amazonaws.com/store.carml.org/assets/nv-tensorrt-repo-ubuntu1804-cuda10.0-trt5.0.0.10-rc-20180906_1-1_amd64.deb && \
   dpkg -i /tmp/tensorrt.deb && \
   apt-key add /var/nv-tensorrt-repo-cudax.x-trt5.0.0.10-rc-20180906_1-1_amd64/7fa2af80.pub && \
   apt-get update && \
