@@ -13,9 +13,6 @@ release: docker_build docker_push
 # Image and binary can be overidden with env vars.
 DOCKER_IMAGE ?= carml/go-tensorrt
 
-# path to the tensorrt deb package
-DEB_PATH = tensorrt.deb
-
 # Get System architecture
 # for now... ask carl how best to get this
 ARCH ?= $(shell go env GOARCH)
@@ -57,8 +54,7 @@ BUILD_ARGS = --build-arg BUILD_DATE=`date -u +"%Y-%m-%dT%H:%M:%SZ"` \
 		        --build-arg VCS_URL=`git config --get remote.origin.url` \
 		        --build-arg VCS_REF=$(GIT_COMMIT) \
 		        --build-arg ARCH=$(ARCH) \
-				--build-arg FRAMEWORK_VERSION="v4.0" \
-				--build-arg DEB_PATH=$(DEB_PATH)
+				--build-arg FRAMEWORK_VERSION="5.0.2" \
 
 docker_build_gpu: # Build GPU Docker image
 	@docker build $(BUILD_ARGS) \
