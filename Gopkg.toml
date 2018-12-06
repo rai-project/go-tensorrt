@@ -69,6 +69,11 @@
   branch = "master"
   name = "github.com/rai-project/tracer"
 
+[[override]]
+  branch = "master"
+  name = "github.com/apache/thrift"
+
+
 [prune]
   go-tests = true
   unused-packages = true
