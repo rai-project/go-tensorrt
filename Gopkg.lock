@@ -1061,7 +1061,6 @@
     "github.com/rai-project/tracer",
     "github.com/rai-project/tracer/all",
     "github.com/rai-project/tracer/ctimer",
-    "github.com/rai-project/tracer/jaeger",
     "github.com/sirupsen/logrus",
     "github.com/stretchr/testify/assert",
   ]

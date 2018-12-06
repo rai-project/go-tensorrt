@@ -29,8 +29,6 @@ import (
 	nvidiasmi "github.com/rai-project/nvidia-smi"
 	"github.com/rai-project/tracer"
 	_ "github.com/rai-project/tracer/all"
-
-	_ "github.com/rai-project/tracer/jaeger"
 )
 
 var (

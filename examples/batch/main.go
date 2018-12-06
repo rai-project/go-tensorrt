@@ -1,12 +1,5 @@
 package main
 
-// #cgo linux CFLAGS: -I/usr/local/cuda/include
-// #cgo linux LDFLAGS: -lcuda -lcudart -L/usr/local/cuda/lib64
-// #include <cuda.h>
-// #include <cuda_runtime.h>
-// #include <cuda_profiler_api.h>
-import "C"
-
 import (
 	"bufio"
 	"context"
@@ -31,8 +24,6 @@ import (
 	"github.com/rai-project/tracer"
 	_ "github.com/rai-project/tracer/all"
 	"github.com/rai-project/tracer/ctimer"
-
-	_ "github.com/rai-project/tracer/jaeger"
 )
 
 var (
