@@ -2,14 +2,33 @@
 [![Build Status](https://dev.azure.com/dakkak/rai/_apis/build/status/go-tensorrt)](https://dev.azure.com/dakkak/rai/_build/latest?definitionId=18)
 [![Build Status](https://travis-ci.org/rai-project/go-tensorrt.svg?branch=master)](https://travis-ci.org/rai-project/go-tensorrt)[![Go Report Card](https://goreportcard.com/badge/github.com/rai-project/go-tensorrt)](https://goreportcard.com/report/github.com/rai-project/go-tensorrt)[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
+[![](https://images.microbadger.com/badges/version/carml/go-tensorrt:amd64-cpu-latest.svg)](https://microbadger.com/images/carml/go-tensorrt:amd64-cpu-latest 'Get your own version badge on microbadger.com')
 [![](https://images.microbadger.com/badges/version/carml/go-tensorrt:amd64-gpu-latest.svg)](https://microbadger.com/images/carml/go-tensorrt:amd64-gpu-latest 'Get your own version badge on microbadger.com')
-[![](https://images.microbadger.com/badges/version/carml/go-tensorrt:ppc64le-gpu-latest.svg)](https://microbadger.com/images/carml/go-tensorrt:ppc64le-gpu-latest> 'Get your own version badge on microbadger.com')
 
-## TensorRT Installation
+## Installation
+
+Download and install go-tensorrt:
+
+```
+go get -v github.com/rai-project/go-tensorrt
+```
+
+The binding requires TensorRT and other Go packages.
+
+### TensorRT C Library
 
 **_Note_** TensorRT currently only works in linux and requires GPU.
 
+The TensorRT C library is expected to be under `/opt/tensorrt`.
+
 Please refer to [Installing TensorRT](https://docs.nvidia.com/deeplearning/sdk/tensorrt-install-guide/index.html) to install TensorRT on your system.
+
+- The default tensorrt installation path is `/opt/tensorrt` for linux.
+
+- The default CUDA path is `/usr/local/cuda`
+
+See [lib.go](lib.go) for details.
+
 If you get an error about not being able to write to `/opt` then perform the following
 
 ```
@@ -17,43 +36,87 @@ sudo mkdir -p /opt/tensorrt
 sudo chown -R `whoami` /opt/tensorrt
 ```
 
-See [lib.go](lib.go) for details.
-
-After installing TensorRT, run `export DYLD_LIBRARY_PATH=/opt/tensorrt/lib:$DYLD_LIBRARY_PATH` on mac os or `export LD_LIBRARY_PATH=/opt/tensorrt/lib:$DYLD_LIBRARY_PATH`on linux.
-
-## Use Other Libary Paths
-
-To use different library paths, change CGO_CFLAGS, CGO_CXXFLAGS and CGO_LDFLAGS enviroment variables.
+If you are using TensorRT docker images or other libary paths, change CGO_CFLAGS, CGO_CXXFLAGS and CGO_LDFLAGS enviroment variables. Refer to [Using cgo with the go command](https://golang.org/cmd/cgo/#hdr-Using_cgo_with_the_go_command).
 
 For example,
 
 ```
-    export CGO_CFLAGS="${CGO_CFLAGS} -I /usr/local/cuda-9.2/include -I/usr/local/cuda-9.2/nvvm/include -I /usr/local/cuda-9.2/extras/CUPTI/include -I /usr/local/cuda-9.2/targets/x86_64-linux/include -I /usr/local/cuda-9.2/targets/x86_64-linux/include/crt"
-    export CGO_CXXFLAGS="${CGO_CXXFLAGS} -I /usr/local/cuda-9.2/include -I/usr/local/cuda-9.2/nvvm/include -I /usr/local/cuda-9.2/extras/CUPTI/include -I /usr/local/cuda-9.2/targets/x86_64-linux/include -I /usr/local/cuda-9.2/targets/x86_64-linux/include/crt"
-    export CGO_LDFLAGS="${CGO_LDFLAGS} -L /usr/local/nvidia/lib64 -L /usr/local/cuda-9.2/nvvm/lib64 -L /usr/local/cuda-9.2/lib64 -L /usr/local/cuda-9.2/lib64/stubs -L /usr/local/cuda-9.2/targets/x86_64-linux/lib/stubs/ -L /usr/local/cuda-9.2/lib64/stubs -L /usr/local/cuda-9.2/extras/CUPTI/lib64"
+    export CGO_CFLAGS="${CGO_CFLAGS} -I/tmp/tensorrt/include"
+    export CGO_CXXFLAGS="${CGO_CXXFLAGS} -I/tmp/tensorrt/include"
+    export CGO_LDFLAGS="${CGO_LDFLAGS} -L/tmp/tensorrt/lib"
 ```
 
-Run `go build` in to check the tensorrt installation and library paths set-up.
 
-## Run The Examples
+### Go Packages
 
-Make sure you have already [install mlmodelscope dependences](https://docs.mlmodelscope.org/installation/source/dependencies/) and [set up the external services](https://docs.mlmodelscope.org/installation/source/external_services/).
-
-### batch
-
-This example is to show how to use mlmodelscope tracing to profile the inference.
+You can install the dependency through `go get`.
 
 ```
-  cd example/batch
+cd $GOPATH/src/github.com/rai-project/tensorflow
+go get -u -v ./...
+```
+
+Or use [Dep](https://github.com/golang/dep).
+
+```
+dep ensure -v
+```
+
+This installs the dependency in `vendor/`.
+
+
+### Configure Environmental Variables
+
+Configure the linker environmental variables since the TensorRT C library is under a non-system directory. Place the following in either your `~/.bashrc` or `~/.zshrc` file
+
+Linux
+```
+export LIBRARY_PATH=$LIBRARY_PATH:/tensorrt/tensorrt/lib
+export LD_LIBRARY_PATH=/opt/tensorrt/lib:$LD_LIBRARY_PATH
+```
+
+macOS
+```
+export LIBRARY_PATH=$LIBRARY_PATH:/opt/tensorrt/lib
+export LD_LIBRARY_PATH=/opt/tensorrt/lib:$DYLD_LIBRARY_PATH
+```
+
+## Check the Build
+
+Run `go build` in to check the dependences installation and library paths set-up.
+
+**_Note_** : The CGO interface passes go pointers to the C API. This is an error by the CGO runtime. Disable the error by placing
+
+```
+export GODEBUG=cgocheck=0
+```
+
+in your `~/.bashrc` or `~/.zshrc` file and then run either `source ~/.bashrc` or `source ~/.zshrc`
+
+
+## Examples
+
+Examples of using the Go TensorRT binding to do model inference are under [examples](examples).
+
+### batch_mlmodelscope
+
+This example shows how to use the MLModelScope tracer to profile the inference.
+
+Refer to [Set up the external services](https://docs.mlmodelscope.org/installation/source/external_services/) to start the tracer.
+
+Then run the example by
+
+```
+  cd example/batch_mlmodelscope
   go build
   ./batch
 ```
 
-Then you can go to `localhost:16686` to look at the trace of that inference.
+Now you can go to `localhost:16686` to look at the trace of that inference.
 
 ### batch_nvprof
 
-This example is to show how to use nvprof to profile the inference.
+This example shows how to use nvprof to profile the inference. You need GPU and CUDA to run this example.
 
 ```
   cd example/batch_nvprof
@@ -61,4 +124,4 @@ This example is to show how to use nvprof to profile the inference.
   nvprof --profile-from-start off ./batch_nvprof
 ```
 
-Refer to [Profiler User's Guide](https://docs.nvidia.com/cuda/profiler-users-guide/index.html) on how to use nvprof.
+Refer to [Profiler User's Guide](https://docs.nvidia.com/cuda/profiler-users-guide/index.html) for using nvprof.
