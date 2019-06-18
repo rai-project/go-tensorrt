@@ -8,9 +8,14 @@ extern "C"
 
     typedef void *PredictorHandle;
 
-    PredictorHandle NewTensorRT(char *deploy_file, char *weights_file,
-                                int batch_size, char *input_layer_name,
-                                char *output_layer_name, int shape_len);
+    PredictorHandle NewTensorRT(char *deploy_file,
+                                char *weights_file,
+                                int batch_size,
+                                char **input_layer_name,
+                                int len_input_layer_name,
+                                char **output_layer_name,
+                                int len_output_layer_name,
+                                int shape_len);
 
     void InitTensorRT();
 

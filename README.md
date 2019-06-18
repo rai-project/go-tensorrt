@@ -21,7 +21,7 @@ The binding requires TensorRT and other Go packages.
 
 ### TensorRT C Library
 
-**_Note_** TensorRT currently only works in linux and requires GPU.
+**_Note_**: TensorRT currently only works in linux and requires GPU.
 
 The TensorRT C library is expected to be under `/opt/tensorrt`.
 

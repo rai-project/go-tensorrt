@@ -15,37 +15,31 @@
 
 using namespace nvinfer1;
 using namespace nvcaffeparser1;
+using std::string;
 
 using json = nlohmann::json;
 
-class Logger : public ILogger
-{
-  void log(Severity severity, const char *msg) override
-  {
+class Logger : public ILogger {
+  void log(Severity severity, const char *msg) override {
     // suppress info-level messages
-    if (severity != Severity::kINFO)
-    {
+    if (severity != Severity::kINFO) {
       std::cout << msg << std::endl;
     }
   }
 } gLogger;
 
-#define CHECK(status)                                  \
-  {                                                    \
-    if (status != 0)                                   \
-    {                                                  \
-      std::cerr << "Cuda failure on line " << __LINE__ \
-                << " status =  " << status << "\n";    \
-    }                                                  \
+#define CHECK(status)                                                          \
+  {                                                                            \
+    if (status != 0) {                                                         \
+      std::cerr << "Cuda failure on line " << __LINE__                         \
+                << " status =  " << status << "\n";                            \
+    }                                                                          \
   }
 
-class Profiler : public IProfiler
-{
+class Profiler : public IProfiler {
 public:
-  Profiler(profile *prof) : prof_(prof)
-  {
-    if (prof_ == nullptr)
-    {
+  Profiler(profile *prof) : prof_(prof) {
+    if (prof_ == nullptr) {
       return;
     }
     prof_->start(); // reset start time
@@ -58,11 +52,9 @@ public:
    * definition
    * \param ms the time in milliseconds to execute the layer
    */
-  virtual void reportLayerTime(const char *layer_name, float ms)
-  {
+  virtual void reportLayerTime(const char *layer_name, float ms) {
 
-    if (prof_ == nullptr)
-    {
+    if (prof_ == nullptr) {
       return;
     }
 
@@ -87,29 +79,25 @@ private:
   timestamp_t current_time_{};
 };
 
-class Predictor
-{
+class Predictor {
 public:
   Predictor(ICudaEngine *engine, IExecutionContext *context, int batch_size,
-            std::string input_layer_name, std::string output_layer_name, int shape_len)
+            std::vector<std::string> input_layer_names,
+            std::vector<std::string> output_layer_names, int shape_len)
       : engine_(engine), context_(context), batch_(batch_size),
-        input_layer_name_(input_layer_name),
-        output_layer_name_(output_layer_name), shape_len_(shape_len){};
+        input_layer_names_(input_layer_names),
+        output_layer_names_(output_layer_names), shape_len_(shape_len){};
 
   void Predict(float *imageData);
 
-  ~Predictor()
-  {
-    if (context_)
-    {
+  ~Predictor() {
+    if (context_) {
       context_->destroy();
     }
-    if (engine_)
-    {
+    if (engine_) {
       engine_->destroy();
     }
-    if (prof_)
-    {
+    if (prof_) {
       prof_->reset();
       delete prof_;
       prof_ = nullptr;
@@ -118,9 +106,9 @@ public:
 
   ICudaEngine *engine_{nullptr};
   IExecutionContext *context_{nullptr};
-  int batch_;
-  std::string input_layer_name_{nullptr};
-  std::string output_layer_name_{nullptr};
+  int batch_{0};
+  std::vector<string> input_layer_names_{nullptr};
+  std::vector<string> output_layer_names_{nullptr};
   int shape_len_;
   int pred_len_;
   float *result_{nullptr};
@@ -128,28 +116,26 @@ public:
   bool profile_enabled_{false};
 };
 
-void Predictor::Predict(float *inputData)
-{
-  if (engine_->getNbBindings() != 2)
-  {
+void Predictor::Predict(float *inputData) {
+  if (engine_->getNbBindings() != 2) {
     std::cerr << "tensorrt prediction error on " << __LINE__ << "\n";
   }
-  if (context_ == nullptr)
-  {
+  if (context_ == nullptr) {
     std::cerr << "tensorrt prediction error on " << __LINE__
               << " :: null context_\n";
   }
-  if (result_ != nullptr)
-  {
+  if (result_ != nullptr) {
     free(result_);
     result_ = nullptr;
   }
 
   // In order to bind the buffers, we need to know the names of the input and
   // output tensors.
-  // note that indices are guaranteed to be less than IEngine::getNbBindings()
-  const int input_index = engine_->getBindingIndex(input_layer_name_.c_str());
-  const int output_index = engine_->getBindingIndex(output_layer_name_.c_str());
+  // Note that indices are guaranteed to be less than IEngine::getNbBindings()
+  const int input_index =
+      engine_->getBindingIndex(input_layer_names_[0].c_str());
+  const int output_index =
+      engine_->getBindingIndex(output_layer_names_[0].c_str());
 
   const auto input_dim_ =
       static_cast<DimsCHW &&>(engine_->getBindingDimensions(input_index));
@@ -184,30 +170,37 @@ void Predictor::Predict(float *inputData)
   context_->execute(batch_, buffers);
 
   result_ = (float *)malloc(output_byte_size);
-  CHECK(cudaMemcpy(
-      result_, output_layer, output_byte_size, cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(result_, output_layer, output_byte_size,
+                   cudaMemcpyDeviceToHost));
 
   // release the stream and the buffers
   CHECK(cudaFree(input_layer));
   CHECK(cudaFree(output_layer));
 }
 
-PredictorHandle NewTensorRT(char *deploy_file, char *weights_file,
-                            int batch_size, char *input_layer_name,
-                            char *output_layer_name, int shape_len)
-{
-  try
-  {
+PredictorHandle NewTensorRT(char *prototxt_file, char *weights_file,
+                            int batch_size, char **input_layer_name,
+                            int len_input_layer_name, char **output_layer_name,
+                            int len_output_layer_name, int shape_len) {
+  try {
     IBuilder *builder = createInferBuilder(gLogger);
     INetworkDefinition *network = builder->createNetwork();
     ICaffeParser *parser = createCaffeParser();
 
-    const IBlobNameToTensor *blobNameToTensor =
-        parser->parse(deploy_file, weights_file, *network, DataType::kFLOAT);
+    std::vector<std::string> input_layer_name_vec{};
+    for (int ii = 0; ii < len_input_layer_name; ii++) {
+      input_layer_name_vec.emplace_back(input_layer_name[ii]);
+    }
+    std::vector<std::string> output_layer_name_vec{};
+    for (int ii = 0; ii < len_output_layer_name; ii++) {
+      output_layer_name_vec.emplace_back(output_layer_name[ii]);
+    }
 
-    auto loc = blobNameToTensor->find(output_layer_name);
-    if (loc == nullptr)
-    {
+    const IBlobNameToTensor *blobNameToTensor =
+        parser->parse(prototxt_file, weights_file, *network, DataType::kFLOAT);
+
+    auto loc = blobNameToTensor->find(output_layer_name[0]);
+    if (loc == nullptr) {
       std::cerr << "cannot find " << output_layer_name
                 << " in blobNameToTensor\n";
       return nullptr;
@@ -219,49 +212,40 @@ PredictorHandle NewTensorRT(char *deploy_file, char *weights_file,
     ICudaEngine *engine = builder->buildCudaEngine(*network);
     IExecutionContext *context = engine->createExecutionContext();
     Predictor *pred =
-        new Predictor(engine, context, batch_size, input_layer_name,
-                      output_layer_name, shape_len);
+        new Predictor(engine, context, batch_size, input_layer_name_vec,
+                      output_layer_name_vec, shape_len);
     return (PredictorHandle)pred;
-  }
-  catch (const std::invalid_argument &ex)
-  {
+  } catch (const std::invalid_argument &ex) {
     return nullptr;
   }
 }
 
 void InitTensorRT() {}
 
-void PredictTensorRT(PredictorHandle pred, float *inputData)
-{
+void PredictTensorRT(PredictorHandle pred, float *inputData) {
   auto predictor = (Predictor *)pred;
-  if (predictor == nullptr)
-  {
+  if (predictor == nullptr) {
     return;
   }
   predictor->Predict(inputData);
   return;
 }
 
-float *GetPredictionsTensorRT(PredictorHandle pred)
-{
+float *GetPredictionsTensorRT(PredictorHandle pred) {
   auto predictor = (Predictor *)pred;
-  if (predictor == nullptr)
-  {
+  if (predictor == nullptr) {
     return nullptr;
   }
   return predictor->result_;
 }
 
-void DeleteTensorRT(PredictorHandle pred)
-{
+void DeleteTensorRT(PredictorHandle pred) {
   auto predictor = (Predictor *)pred;
-  if (predictor == nullptr)
-  {
+  if (predictor == nullptr) {
     return;
   }
 
-  if (predictor->result_)
-  {
+  if (predictor->result_) {
     free(predictor->result_);
     predictor->result_ = nullptr;
   }
@@ -269,66 +253,50 @@ void DeleteTensorRT(PredictorHandle pred)
 }
 
 void StartProfilingTensorRT(PredictorHandle pred, const char *name,
-                            const char *metadata)
-{
+                            const char *metadata) {
   auto predictor = (Predictor *)pred;
-  if (predictor == nullptr)
-  {
+  if (predictor == nullptr) {
     return;
   }
-  if (name == nullptr)
-  {
+  if (name == nullptr) {
     name = "";
   }
-  if (metadata == nullptr)
-  {
+  if (metadata == nullptr) {
     metadata = "";
   }
-  if (predictor->prof_ == nullptr)
-  {
+  if (predictor->prof_ == nullptr) {
     predictor->prof_ = new profile(name, metadata);
-  }
-  else
-  {
+  } else {
     predictor->prof_->reset();
   }
 }
 
-void EndProfilingTensorRT(PredictorHandle pred)
-{
+void EndProfilingTensorRT(PredictorHandle pred) {
   auto predictor = (Predictor *)pred;
-  if (predictor == nullptr)
-  {
+  if (predictor == nullptr) {
     return;
   }
-  if (predictor->prof_)
-  {
+  if (predictor->prof_) {
     predictor->prof_->end();
   }
 }
 
-void DisableProfilingTensorRT(PredictorHandle pred)
-{
+void DisableProfilingTensorRT(PredictorHandle pred) {
   auto predictor = (Predictor *)pred;
-  if (predictor == nullptr)
-  {
+  if (predictor == nullptr) {
     return;
   }
-  if (predictor->prof_)
-  {
+  if (predictor->prof_) {
     predictor->prof_->reset();
   }
 }
 
-char *ReadProfileTensorRT(PredictorHandle pred)
-{
+char *ReadProfileTensorRT(PredictorHandle pred) {
   auto predictor = (Predictor *)pred;
-  if (predictor == nullptr)
-  {
+  if (predictor == nullptr) {
     return strdup("");
   }
-  if (predictor->prof_ == nullptr)
-  {
+  if (predictor->prof_ == nullptr) {
     return strdup("");
   }
   const auto s = predictor->prof_->read();
@@ -336,21 +304,17 @@ char *ReadProfileTensorRT(PredictorHandle pred)
   return strdup(cstr);
 }
 
-int GetShapeLenTensorRT(PredictorHandle pred)
-{
+int GetShapeLenTensorRT(PredictorHandle pred) {
   auto predictor = (Predictor *)pred;
-  if (predictor == nullptr)
-  {
+  if (predictor == nullptr) {
     return 0;
   }
   return predictor->shape_len_;
 }
 
-int GetPredLenTensorRT(PredictorHandle pred)
-{
+int GetPredLenTensorRT(PredictorHandle pred) {
   auto predictor = (Predictor *)pred;
-  if (predictor == nullptr)
-  {
+  if (predictor == nullptr) {
     return 0;
   }
   return predictor->pred_len_;
