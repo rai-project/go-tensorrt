@@ -2,35 +2,36 @@
 #define __PREDICTOR_HPP__
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif // __cplusplus
 
-typedef void *PredictorContext;
+    typedef void *PredictorHandle;
 
-PredictorContext NewTensorRT(char *deploy_file, char *weights_file,
-                             int batch_size, char *input_layer_name,
-                             char *output_layer_name, int shape_len);
+    PredictorHandle NewTensorRT(char *deploy_file, char *weights_file,
+                                int batch_size, char *input_layer_name,
+                                char *output_layer_name, int shape_len);
 
-void InitTensorRT();
+    void InitTensorRT();
 
-void PredictTensorRT(PredictorContext pred, float *imageData);
+    void PredictTensorRT(PredictorHandle pred, float *imageData);
 
-float *GetPredictionsTensorRT(PredictorContext pred);
+    float *GetPredictionsTensorRT(PredictorHandle pred);
 
-void DeleteTensorRT(PredictorContext pred);
+    void DeleteTensorRT(PredictorHandle pred);
 
-void StartProfilingTensorRT(PredictorContext pred, const char *name,
-                            const char *metadata);
+    void StartProfilingTensorRT(PredictorHandle pred, const char *name,
+                                const char *metadata);
 
-void EndProfilingTensorRT(PredictorContext pred);
+    void EndProfilingTensorRT(PredictorHandle pred);
 
-void DisableProfilingTensorRT(PredictorContext pred);
+    void DisableProfilingTensorRT(PredictorHandle pred);
 
-char *ReadProfileTensorRT(PredictorContext pred);
+    char *ReadProfileTensorRT(PredictorHandle pred);
 
-int GetShapeLenTensorRT(PredictorContext pred);
+    int GetShapeLenTensorRT(PredictorHandle pred);
 
-int GetPredLenTensorRT(PredictorContext pred);
+    int GetPredLenTensorRT(PredictorHandle pred);
 
 #ifdef __cplusplus
 }

@@ -15,16 +15,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rai-project/config"
-
 	"github.com/GeertJohan/go-sourcepath"
-	"github.com/stretchr/testify/assert"
-
+	"github.com/rai-project/config"
 	"github.com/rai-project/dlframework"
 	"github.com/rai-project/dlframework/framework/feature"
 	"github.com/rai-project/dlframework/framework/options"
 	"github.com/rai-project/image"
 	"github.com/rai-project/image/types"
+	"github.com/stretchr/testify/assert"
 )
 
 var (

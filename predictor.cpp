@@ -139,9 +139,10 @@ void Predictor::Predict(float *inputData)
     std::cerr << "tensorrt prediction error on " << __LINE__
               << " :: null context_\n";
   }
-  if (result_ != nullptr) {
-      free(result_);
-      result_ = nullptr;
+  if (result_ != nullptr)
+  {
+    free(result_);
+    result_ = nullptr;
   }
 
   // In order to bind the buffers, we need to know the names of the input and
@@ -191,9 +192,9 @@ void Predictor::Predict(float *inputData)
   CHECK(cudaFree(output_layer));
 }
 
-PredictorContext NewTensorRT(char *deploy_file, char *weights_file,
-                             int batch_size, char *input_layer_name,
-                             char *output_layer_name, int shape_len)
+PredictorHandle NewTensorRT(char *deploy_file, char *weights_file,
+                            int batch_size, char *input_layer_name,
+                            char *output_layer_name, int shape_len)
 {
   try
   {
@@ -220,7 +221,7 @@ PredictorContext NewTensorRT(char *deploy_file, char *weights_file,
     Predictor *pred =
         new Predictor(engine, context, batch_size, input_layer_name,
                       output_layer_name, shape_len);
-    return (PredictorContext)pred;
+    return (PredictorHandle)pred;
   }
   catch (const std::invalid_argument &ex)
   {
@@ -230,7 +231,7 @@ PredictorContext NewTensorRT(char *deploy_file, char *weights_file,
 
 void InitTensorRT() {}
 
-void PredictTensorRT(PredictorContext pred, float *inputData)
+void PredictTensorRT(PredictorHandle pred, float *inputData)
 {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr)
@@ -241,7 +242,7 @@ void PredictTensorRT(PredictorContext pred, float *inputData)
   return;
 }
 
-float *GetPredictionsTensorRT(PredictorContext pred)
+float *GetPredictionsTensorRT(PredictorHandle pred)
 {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr)
@@ -251,7 +252,7 @@ float *GetPredictionsTensorRT(PredictorContext pred)
   return predictor->result_;
 }
 
-void DeleteTensorRT(PredictorContext pred)
+void DeleteTensorRT(PredictorHandle pred)
 {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr)
@@ -267,7 +268,7 @@ void DeleteTensorRT(PredictorContext pred)
   delete predictor;
 }
 
-void StartProfilingTensorRT(PredictorContext pred, const char *name,
+void StartProfilingTensorRT(PredictorHandle pred, const char *name,
                             const char *metadata)
 {
   auto predictor = (Predictor *)pred;
@@ -293,7 +294,7 @@ void StartProfilingTensorRT(PredictorContext pred, const char *name,
   }
 }
 
-void EndProfilingTensorRT(PredictorContext pred)
+void EndProfilingTensorRT(PredictorHandle pred)
 {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr)
@@ -306,7 +307,7 @@ void EndProfilingTensorRT(PredictorContext pred)
   }
 }
 
-void DisableProfilingTensorRT(PredictorContext pred)
+void DisableProfilingTensorRT(PredictorHandle pred)
 {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr)
@@ -319,7 +320,7 @@ void DisableProfilingTensorRT(PredictorContext pred)
   }
 }
 
-char *ReadProfileTensorRT(PredictorContext pred)
+char *ReadProfileTensorRT(PredictorHandle pred)
 {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr)
@@ -335,7 +336,7 @@ char *ReadProfileTensorRT(PredictorContext pred)
   return strdup(cstr);
 }
 
-int GetShapeLenTensorRT(PredictorContext pred)
+int GetShapeLenTensorRT(PredictorHandle pred)
 {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr)
@@ -345,7 +346,7 @@ int GetShapeLenTensorRT(PredictorContext pred)
   return predictor->shape_len_;
 }
 
-int GetPredLenTensorRT(PredictorContext pred)
+int GetPredLenTensorRT(PredictorHandle pred)
 {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr)

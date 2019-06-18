@@ -20,16 +20,8 @@ import (
 )
 
 type Predictor struct {
-	ctx     C.PredictorContext
+	handle     C.PredictorHandle
 	options *options.Options
-}
-
-func prod(arry []int) int {
-	accum := int(1)
-	for _, e := range arry {
-		accum *= int(e)
-	}
-	return accum
 }
 
 func New(ctx context.Context, opts ...options.Option) (*Predictor, error) {
@@ -155,4 +147,12 @@ func (p *Predictor) ReadProfile() (string, error) {
 	}
 	defer C.free(unsafe.Pointer(cstr))
 	return C.GoString(cstr), nil
+}
+
+func prod(arry []int) int {
+	accum := int(1)
+	for _, e := range arry {
+		accum *= int(e)
+	}
+	return accum
 }
