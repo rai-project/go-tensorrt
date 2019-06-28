@@ -133,7 +133,7 @@ func (p *Predictor) Predict(ctx context.Context, data []float32) error {
 	return nil
 }
 
-func (p *Predictor) ReadPredictionOutput(ctx context.Context) ([]float32, error) {
+func (p *Predictor) ReadPredictionOutputs(ctx context.Context) ([]float32, error) {
 	span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_read_prediction_output")
 	defer span.Finish()
 
@@ -149,6 +149,36 @@ func (p *Predictor) ReadPredictionOutput(ctx context.Context) ([]float32, error)
 	slice := (*[1 << 30]float32)(unsafe.Pointer(cPredictions))[:length:length]
 
 	return slice, nil
+}
+
+func prod(sz []int) int {
+	res := 1
+	for _, a := range sz {
+	  res *= a
+	}
+	return res
+  }
+}
+
+func (p *Predictor) GetOutputData(idx int) []float32 {
+	shape := p.GetOutputShape(idx)
+	sz := prod(shape)
+  
+	data := C.GetOutputDataTensorRT(p.handle, C.int32_t(idx))
+  
+	  return (*[1 << 30]float32)(unsafe.Pointer(data))[:sz:sz]
+  }
+
+func (p *Predictor) ReadOutputData(ctx context.Context, idx int ) ([]float32, error) {
+	span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_read_prediction_output")
+  defer span.Finish()
+  
+	outputData :=p.GetOutputData(idx)
+	if outputData == nil {
+		return nil, errors.New("empty output data")
+	}
+
+	return outputData, nil
 }
 
 func (p *Predictor) Close() {
