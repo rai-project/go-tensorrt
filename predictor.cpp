@@ -116,8 +116,7 @@ public:
   bool profile_enabled_{false};
 };
 
-void Predictor::SetInput() {
-}
+void Predictor::SetInput() {}
 
 void Predictor::Predict() {
   if (engine_->getNbBindings() != 2) {
@@ -182,26 +181,24 @@ void Predictor::Predict() {
   CHECK(cudaFree(output_layer));
 }
 
-PredictorHandle NewTensorRT(char *prototxt_file, // caffe prototxt
-                            char *weights_file, // caffe model weights
-                            int batch_size, // batch size - NB must be at least as large as the batch we want to run with)
-                            char **input_layer_name,
-                            int len_input_layer_name, 
-                            char **output_layer_name,
-                            int len_output_layer_name) {
+PredictorHandle
+NewTensorRT(char *prototxt_file, // caffe prototxt
+            char *weights_file,  // caffe model weights
+            int batch_size, // batch size - NB must be at least as large as the
+                            // batch we want to run with)
+            char **input_layer_name, int len_input_layer_name,
+            char **output_layer_name, int len_output_layer_name) {
   try {
     // Create the builder
     IBuilder *builder = createInferBuilder(gLogger);
     assert(builder != nullptr);
 
     // Parse the caffe model to populate the network, then set the outputs
-    INetworkDefinition* network = builder->createNetwork();
-    ICaffeParser* parser = createCaffeParser();
+    INetworkDefinition *network = builder->createNetwork();
+    ICaffeParser *parser = createCaffeParser();
 
-    const IBlobNameToTensor* blobNameToTensor = parser->parse(prototxt_file,
-                                                              weights_file,
-                                                              *network,
-                                                              DataType::kFLOAT);
+    const IBlobNameToTensor *blobNameToTensor =
+        parser->parse(prototxt_file, weights_file, *network, DataType::kFLOAT);
 
     std::vector<std::string> input_layer_name_vec{};
     for (int ii = 0; ii < len_input_layer_name; ii++) {
@@ -213,7 +210,7 @@ PredictorHandle NewTensorRT(char *prototxt_file, // caffe prototxt
     }
 
     // Specify which tensors are outputs
-    for (auto& s : output_layer_name_vec) {
+    for (auto &s : output_layer_name_vec) {
       auto loc = blobNameToTensor->find(output_layer_name[0]);
       if (loc == nullptr) {
         std::cerr << "cannot find " << output_layer_name
@@ -225,13 +222,15 @@ PredictorHandle NewTensorRT(char *prototxt_file, // caffe prototxt
 
     // Build the engine
     builder->setMaxBatchSize(batch_size);
-    builder->setMaxWorkspaceSize(10 << 20); // We need about 6MB of scratch space for the plugin layer for batch size 5
-    
+    builder->setMaxWorkspaceSize(
+        10 << 20); // We need about 6MB of scratch space for the plugin layer
+                   // for batch size 5
+
     enableDLA(builder, gArgs.useDLACore);
 
     ICudaEngine *engine = builder->buildCudaEngine(*network);
     assert(engine);
-    
+
     // We don't need the network any more, and we can destroy the parser
     network->destroy();
     parser->destroy();
@@ -329,7 +328,7 @@ char *ReadProfileTensorRT(PredictorHandle pred) {
 }
 
 const int *GetOutputShapeTensorRT(PredictorHandle pred, int32_t idx,
-                               int32_t *len) {
+                                  int32_t *len) {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr) {
     return nullptr;
@@ -352,25 +351,25 @@ int GetPredLenTensorRT(PredictorHandle pred) {
 
 #endif // __linux__
 
-inline void enableDLA(IBuilder* b, int useDLACore, bool allowGPUFallback = true)
-{
-    if (useDLACore >= 0)
-    {
-        if (b->getNbDLACores() == 0)
-        {
-            std::cerr << "Trying to use DLA core " << useDLACore << " on a platform that doesn't have any DLA cores" << std::endl;
-            assert("Error: use DLA core on a platfrom that doesn't have any DLA cores" && false);
-        }
-        b->allowGPUFallback(allowGPUFallback);
-        if (!b->getInt8Mode())
-        {
-            // User has not requested INT8 Mode.
-            // By default run in FP16 mode. FP32 mode is not permitted.
-            b->setFp16Mode(true);
-        }
-        b->setDefaultDeviceType(DeviceType::kDLA);
-        b->setDLACore(useDLACore);
-        b->setStrictTypeConstraints(true);
+inline void enableDLA(IBuilder *b, int useDLACore,
+                      bool allowGPUFallback = true) {
+  if (useDLACore >= 0) {
+    if (b->getNbDLACores() == 0) {
+      std::cerr << "Trying to use DLA core " << useDLACore
+                << " on a platform that doesn't have any DLA cores"
+                << std::endl;
+      assert(
+          "Error: use DLA core on a platfrom that doesn't have any DLA cores" &&
+          false);
     }
+    b->allowGPUFallback(allowGPUFallback);
+    if (!b->getInt8Mode()) {
+      // User has not requested INT8 Mode.
+      // By default run in FP16 mode. FP32 mode is not permitted.
+      b->setFp16Mode(true);
+    }
+    b->setDefaultDeviceType(DeviceType::kDLA);
+    b->setDLACore(useDLACore);
+    b->setStrictTypeConstraints(true);
+  }
 }
-
