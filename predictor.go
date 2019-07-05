@@ -158,7 +158,6 @@ func prod(sz []int) int {
 	}
 	return res
   }
-}
 
 func (p *Predictor) GetOutputData(idx int) []float32 {
 	shape := p.GetOutputShape(idx)
