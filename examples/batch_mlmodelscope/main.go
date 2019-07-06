@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/Unknwon/com"
+
 	"github.com/anthonynsimon/bild/imgio"
 	"github.com/anthonynsimon/bild/transform"
 	"github.com/k0kubun/pp"
@@ -22,7 +24,9 @@ import (
 	nvidiasmi "github.com/rai-project/nvidia-smi"
 	"github.com/rai-project/tracer"
 	_ "github.com/rai-project/tracer/all"
+
 	"github.com/rai-project/tracer/ctimer"
+	gotensor "gorgonia.org/tensor"
 )
 
 var (
@@ -121,7 +125,6 @@ func main() {
 		Shape: shape,
 	}
 
-	
 	predictor, err := tensorrt.New(
 		ctx,
 		options.WithOptions(opts),
@@ -164,7 +167,6 @@ func main() {
 
 	predictor.EndProfiling()
 
-
 	if enableCupti {
 		cu.Wait()
 		cu.Close()
@@ -174,7 +176,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	predictor.DisableProfiling()
 
 	t, err := ctimer.New(profBuffer)
 	if err != nil {
@@ -182,10 +183,12 @@ func main() {
 	}
 	t.Publish(ctx, tracer.FRAMEWORK_TRACE)
 
-	output, err := predictor.ReadOutputData(ctx, 0)
+	outputs, err := predictor.ReadPredictionOutputs(ctx)
 	if err != nil {
 		panic(err)
 	}
+
+	output := outputs[0]
 
 	var labels []string
 	f, err := os.Open(synset)
