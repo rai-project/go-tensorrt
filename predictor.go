@@ -22,8 +22,8 @@ import (
 
 type Predictor struct {
   handle  C.PredictorHandle
-  inputNodes []string 
-  outputNodes []string
+  inputNodes []options.Node
+  outputNodes []options.Node
 	options *options.Options
 }
 
@@ -78,12 +78,12 @@ func New(ctx context.Context, opts ...options.Option) (*Predictor, error) {
     C.TensorRT_ModelFormat(ModelFormatCaffe),
 		modelFileString,
 		weightsFileString,
-		Float,
+		C.TensorRT_DType(Float),
 		(**C.char)(unsafe.Pointer(&cInputNodes[0])),
-		C.int(len(inputNodes)),
+		C.int32_t(len(inputNodes)),
 		(**C.char)(unsafe.Pointer(&cOutputNodes[0])),
-		C.int(len(outputNodes)),
-		C.int(prod(inputNodes[0].Shape)),
+		C.int32_t(len(outputNodes)),
+		C.int32_t(prod(inputNodes[0].Shape)),
 	)
 
 	pred := &Predictor{
@@ -119,12 +119,17 @@ func (p *Predictor) Predict(ctx context.Context, data []float32) error {
 		return fmt.Errorf("intput data nil or empty")
 	}
 
+cname := C.CString(p.inputNodes[0].Key)
+defer C.free(unsafe.Pointer(cname))
+
+
 	span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_predict")
   C.TenorRTPredictor_AddInput(
     p.handle, 
-    Float,
-    (*C.float)(unsafe.Pointer(&data[0])),
-    numElems,
+    cname,
+    C.TensorRT_DType(Float),
+    unsafe.Pointer(&data[0]),
+    C.size_t(len(data)),
   )
 	span.Finish()
 
@@ -137,9 +142,9 @@ func (p *Predictor) ReadPredictionOutputs(ctx context.Context) ([][]float32, err
 
 	numOutputs := int(C.TenorRTPredictor_GetNumOutputs(p.handle))
 	
-  outputs := make([][]float32, len(numOutputs))
+  outputs := make([][]float32, numOutputs)
   for ii := 0; ii < numOutputs; ii++ {
-    outputs[ii] =  p.ReadPredictionOutput(outputNodes[ii])
+    outputs[ii] =  p.ReadPredictionOutput(p.outputNodes[ii].Key)
   }
 
 	return outputs, nil
@@ -158,9 +163,9 @@ func (p *Predictor) ReadPredictionOutput(name string) []float32 {
 	defer C.free(unsafe.Pointer(cname))
 
   var ndims int32
-  var cdims *int32
+   cdims := new(C.int32_t)
 
-	data := C.TenorRTPredictor_GetOutput(p.handle, name, &ndims, &cdims)
+	data := C.TenorRTPredictor_GetOutput(p.handle, cname, (*C.int32_t)(&ndims), (**C.int32_t)(&cdims))
   
   dims := (*[1 << 30]C.int32_t)(unsafe.Pointer(data))[:ndims:ndims]
 
@@ -171,18 +176,6 @@ func (p *Predictor) ReadPredictionOutput(name string) []float32 {
 
 	  return (*[1 << 30]float32)(unsafe.Pointer(data))[:sz:sz]
   }
-
-func (p *Predictor) ReadOutputData(ctx context.Context, idx int ) ([]float32, error) {
-	span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_read_prediction_output")
-  defer span.Finish()
-  
-	outputData :=p.GetOutputData(idx)
-	if outputData == nil {
-		return nil, errors.New("empty output data")
-	}
-
-	return outputData, nil
-}
 
 func (p *Predictor) Close() {
 	var nilPredictorHandle C.PredictorHandle
@@ -214,12 +207,4 @@ func (p *Predictor) ReadProfile() (string, error) {
 	}
 	defer C.free(unsafe.Pointer(cstr))
 	return C.GoString(cstr), nil
-}
-
-func prod(arry []int) int {
-	accum := int(1)
-	for _, e := range arry {
-		accum *= int(e)
-	}
-	return accum
 }
