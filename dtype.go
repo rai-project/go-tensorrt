@@ -4,7 +4,10 @@ package tensorrt
 
 // #include "cbits/predictor.hpp"
 import "C"
-import "reflect"
+
+import (
+   "reflect"
+)
 
 
 // DType tensor scalar data type
@@ -26,7 +29,6 @@ const (
 	// Double tensor  (go type float64)
 	Double DType = C.TensorRT_Double
 )
-
 
 
 var types = []struct {

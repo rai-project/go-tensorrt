@@ -3,7 +3,7 @@
 package tensorrt
 
 // #cgo LDFLAGS: -lstdc++ -lnvinfer -lnvcaffe_parser -lnvinfer_plugin -lnvonnxparser
-// #cgo CXXFLAGS: -std=c++14 -I${SRCDIR}/cbits -O3 -Wall -g
+// #cgo CXXFLAGS: -std=c++14 -I${SRCDIR}/cbits -O0 -Wall -g
 // #cgo CXXFLAGS: -Wno-sign-compare -Wno-unused-function
 // #cgo linux,!ppc64le CXXFLAGS: -I/usr/local/cuda/include
 // #cgo linux,amd64 CXXFLAGS: -I/opt/tensorrt/include -I/usr/include/x86_64-linux-gnu

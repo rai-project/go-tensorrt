@@ -44,12 +44,16 @@ static void set_error(const std::string &err) {
 #define END_C_DEFINION(res)                                                    \
   }                                                                            \
   catch (const std::exception &e) {                                            \
+    std::cerr << "ERROR: " << e.what() << "\n";                                \
     set_error(e.what());                                                       \
   }                                                                            \
   catch (const std::string &e) {                                               \
+    std::cerr << "ERROR: " << e << "\n";                                       \
     set_error(e);                                                              \
   }                                                                            \
   catch (...) {                                                                \
+    std::cerr << "ERROR: unknown exception in go-tensorrt"                     \
+              << "\n";                                                         \
     set_error("unknown exception in go-tensorrt");                             \
   }                                                                            \
   clear_error();                                                               \
@@ -185,25 +189,40 @@ public:
     }
 
     const auto shape = GetOutputShape(name);
-    auto element_byte_count = 0;
+    auto element_byte_count = 1;
     const auto data_type = engine.getBindingDataType(idx);
-    const auto num_elements =
-        std::accumulate(begin(shape), end(shape), 1, std::multiplies<int>());
+    const size_t num_elements =
+        std::accumulate(begin(shape), end(shape), 1, std::multiplies<size_t>());
+    std::cout << "shape = " << shape[0] << "\n";
     switch (data_type) {
-#define DISPATCH_ADD_INPUT(DType, CType)                                       \
+#define DISPATCH_GET_OUTPUT(DType, CType)                                      \
   case DType:                                                                  \
     element_byte_count = sizeof(CType);                                        \
     break;                                                                     \
-    TensorRT_DType_Dispatch(DISPATCH_ADD_INPUT)
-#undef DISPATCH_ADD_INPUT
+    TensorRT_DType_Dispatch(DISPATCH_GET_OUTPUT)
+#undef DISPATCH_GET_OUTPUT
+    case DataType::kFLOAT:
+      element_byte_count = sizeof(float);
+      break;
+    case DataType::kHALF:
+      element_byte_count = sizeof(short);
+      break;
+    case DataType::kINT8:
+      element_byte_count = sizeof(int8_t);
+      break;
+    case DataType::kINT32:
+      element_byte_count = sizeof(int32_t);
+      break;
     default:
-      throw std::runtime_error("unexpected input type");
+      throw std::runtime_error("unexpected output type");
     }
     const auto byte_count = num_elements * element_byte_count;
     void *res_data = malloc(byte_count);
+    std::cout << "byte_count = " << byte_count << "\n";
     CHECK(cudaMemcpy(res_data, data_[idx], byte_count, cudaMemcpyDeviceToHost));
+    return res_data;
   }
-  std::vector<int> GetOutputShape(const std::string &name) {
+  std::vector<int32_t> GetOutputShape(const std::string &name) {
     synchronize();
 
     const ICudaEngine &engine = context_->getEngine();
@@ -214,11 +233,17 @@ public:
 
     const auto dims = engine.getBindingDimensions(idx);
     const auto ndims = dims.nbDims;
+    std::cout << __LINE__ << "  >>> "
+              << "name = " << name << "\n";
+    std::cout << __LINE__ << "  >>> "
+              << "ndims = " << ndims << "\n";
     std::vector<int> res{};
-    res.reserve(ndims);
     for (int ii = 0; ii < ndims; ii++) {
+      std::cout << __LINE__ << "  >>> " << ii << "  ==  " << dims.d[ii] << "\n";
       res.emplace_back(dims.d[ii]);
     }
+    std::cout << __LINE__ << "  >>> "
+              << "res.size() = " << res.size() << "\n";
     return res;
   }
 
@@ -305,15 +330,14 @@ NewTensorRTPredictor(TensorRT_ModelFormat model_format, char *deploy_file,
   const IBlobNameToTensor *blobNameToTensor =
       parser->parse(deploy_file, weights_file, *network, blob_data_type);
 
-  std::vector<std::string> input_layer_names{};
+  std::vector<std::string> input_layer_names_vec{};
   for (int ii = 0; ii < num_input_layer_names; ii++) {
-    input_layer_names.emplace_back(input_layer_names[ii]);
+    input_layer_names_vec.emplace_back(input_layer_names[ii]);
   }
-  std::vector<std::string> output_layer_names{};
+  std::vector<std::string> output_layer_names_vec{};
   for (int ii = 0; ii < num_output_layer_names; ii++) {
-    output_layer_names.emplace_back(output_layer_names[ii]);
-    network->markOutput(
-        *blobNameToTensor->find(output_layer_names[ii].c_str()));
+    output_layer_names_vec.emplace_back(output_layer_names[ii]);
+    network->markOutput(*blobNameToTensor->find(output_layer_names[ii]));
   }
 
   builder->setMaxBatchSize(batch_size);
@@ -342,8 +366,8 @@ NewTensorRTPredictor(TensorRT_ModelFormat model_format, char *deploy_file,
 
   trtModelStream->destroy();
 
-  auto predictor =
-      new Predictor(context, input_layer_names, output_layer_names, batch_size);
+  auto predictor = new Predictor(context, input_layer_names_vec,
+                                 output_layer_names_vec, batch_size);
 
   return (PredictorHandle)predictor;
 
@@ -395,9 +419,16 @@ void *TenorRTPredictor_GetOutput(PredictorHandle predictor_handle,
                                  int32_t **res_dims) {
   START_C_DEFINION();
   auto predictor = get_predictor_from_handle(predictor_handle);
+
+  std::cout << __LINE__ << "  >>> \n";
   auto dims = predictor->GetOutputShape(name);
+  std::cout << __LINE__ << "  >>> \n";
   void *data = predictor->GetOutputData(name);
   *ndims = dims.size();
+
+  std::cout << __LINE__ << "  >>> "
+            << "*ndims = " << *ndims << "\n";
+
   *res_dims = (int32_t *)malloc(sizeof(int32_t) * (*ndims));
   memcpy(*res_dims, dims.data(), sizeof(int32_t) * (*ndims));
   return data;

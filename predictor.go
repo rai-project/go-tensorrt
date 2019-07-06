@@ -14,6 +14,8 @@ import (
 	"runtime"
 	"unsafe"
 
+	"github.com/k0kubun/pp"
+
 	"github.com/Unknwon/com"
 	"github.com/pkg/errors"
 	"github.com/rai-project/dlframework/framework/options"
@@ -21,10 +23,10 @@ import (
 )
 
 type Predictor struct {
-  handle  C.PredictorHandle
-  inputNodes []options.Node
-  outputNodes []options.Node
-	options *options.Options
+	handle      C.PredictorHandle
+	inputNodes  []options.Node
+	outputNodes []options.Node
+	options     *options.Options
 }
 
 func New(ctx context.Context, opts ...options.Option) (*Predictor, error) {
@@ -71,26 +73,27 @@ func New(ctx context.Context, opts ...options.Option) (*Predictor, error) {
 		}
 	}
 
+
 	cOutputNodes := makeCStringArray(outputNodes)
 	defer deleteCStringArray(cOutputNodes)
 
 	handle := C.NewTensorRTPredictor(
-    C.TensorRT_ModelFormat(ModelFormatCaffe),
+		C.TensorRT_ModelFormat(ModelFormatCaffe),
 		modelFileString,
 		weightsFileString,
 		C.TensorRT_DType(Float),
-		(**C.char)(unsafe.Pointer(&cInputNodes[0])),
+		(**C.char)(&cInputNodes[0]),
 		C.int32_t(len(inputNodes)),
-		(**C.char)(unsafe.Pointer(&cOutputNodes[0])),
+		(**C.char)(&cOutputNodes[0]),
 		C.int32_t(len(outputNodes)),
-		C.int32_t(prod(inputNodes[0].Shape)),
+		C.int32_t(options.BatchSize()),
 	)
 
 	pred := &Predictor{
-    handle:  handle,
-    inputNodes: inputNodes,
-    outputNodes: outputNodes,
-		options: options,
+		handle:      handle,
+		inputNodes:  inputNodes,
+		outputNodes: outputNodes,
+		options:     options,
 	}
 
 	runtime.SetFinalizer(pred, func(p *Predictor) {
@@ -119,18 +122,17 @@ func (p *Predictor) Predict(ctx context.Context, data []float32) error {
 		return fmt.Errorf("intput data nil or empty")
 	}
 
-cname := C.CString(p.inputNodes[0].Key)
-defer C.free(unsafe.Pointer(cname))
-
+	cname := C.CString(p.inputNodes[0].Key)
+	defer C.free(unsafe.Pointer(cname))
 
 	span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_predict")
-  C.TenorRTPredictor_AddInput(
-    p.handle, 
-    cname,
-    C.TensorRT_DType(Float),
-    unsafe.Pointer(&data[0]),
-    C.size_t(len(data)),
-  )
+	C.TenorRTPredictor_AddInput(
+		p.handle,
+		cname,
+		C.TensorRT_DType(Float),
+		unsafe.Pointer(&data[0]),
+		C.size_t(len(data)),
+	)
 	span.Finish()
 
 	return nil
@@ -141,11 +143,11 @@ func (p *Predictor) ReadPredictionOutputs(ctx context.Context) ([][]float32, err
 	defer span.Finish()
 
 	numOutputs := int(C.TenorRTPredictor_GetNumOutputs(p.handle))
-	
-  outputs := make([][]float32, numOutputs)
-  for ii := 0; ii < numOutputs; ii++ {
-    outputs[ii] =  p.ReadPredictionOutput(p.outputNodes[ii].Key)
-  }
+
+	outputs := make([][]float32, numOutputs)
+	for ii := 0; ii < numOutputs; ii++ {
+		outputs[ii] = p.ReadPredictionOutput(p.outputNodes[ii].Key)
+	}
 
 	return outputs, nil
 }
@@ -153,29 +155,32 @@ func (p *Predictor) ReadPredictionOutputs(ctx context.Context) ([][]float32, err
 func prod(sz []int) int {
 	res := 1
 	for _, a := range sz {
-	  res *= a
+		res *= a
 	}
 	return res
-  }
+}
 
 func (p *Predictor) ReadPredictionOutput(name string) []float32 {
-  cname := C.CString(name)
+	cname := C.CString(name)
 	defer C.free(unsafe.Pointer(cname))
 
-  var ndims int32
-   cdims := new(C.int32_t)
+	var ndims int32
+	cdims := new(C.int32_t)
 
 	data := C.TenorRTPredictor_GetOutput(p.handle, cname, (*C.int32_t)(&ndims), (**C.int32_t)(&cdims))
+
+  pp.Println(ndims)
+	dims := (*[1 << 30]C.int32_t)(unsafe.Pointer(cdims))[:ndims:ndims]
+
+	sz := 1
+	for ii := 0; ii < int(ndims); ii++ {
+		sz *= int(dims[ii])
+  }
   
-  dims := (*[1 << 30]C.int32_t)(unsafe.Pointer(data))[:ndims:ndims]
+  pp.Println(sz)
 
-  sz := 1 
-  for  ii := 0; ii < int(ndims);ii++ {
-    sz *= int(dims[ii])
-  }
-
-	  return (*[1 << 30]float32)(unsafe.Pointer(data))[:sz:sz]
-  }
+	return (*[1 << 30]float32)(unsafe.Pointer(data))[:sz:sz]
+}
 
 func (p *Predictor) Close() {
 	var nilPredictorHandle C.PredictorHandle
@@ -207,4 +212,8 @@ func (p *Predictor) ReadProfile() (string, error) {
 	}
 	defer C.free(unsafe.Pointer(cstr))
 	return C.GoString(cstr), nil
+}
+
+func dummyPP( ) {
+	pp.Println("dummy")
 }
