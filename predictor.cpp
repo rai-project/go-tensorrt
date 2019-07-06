@@ -15,6 +15,7 @@
 
 using namespace nvinfer1;
 using namespace nvcaffeparser1;
+using namespace plugin;
 using std::string;
 
 using json = nlohmann::json;
@@ -81,23 +82,102 @@ private:
 
 class Predictor {
 public:
-  Predictor(ICudaEngine *engine, IExecutionContext *context, int batch_size,
-            std::vector<std::string> input_layer_names,
-            std::vector<std::string> output_layer_names)
-      : engine_(engine), context_(context), batch_(batch_size),
-        input_layer_names_(input_layer_names),
-        output_layer_names_(output_layer_names)){};
-  void Predict();
-  void SetInput(int idx, float *data);
-  const float *GetOutputData(int idx);
-  std::vector<int> GetOutputShape(int idx);
+  Predictor(IExecutionContext *context, std::vector<std::string> input_layer_names, std::vector<std::string> output_layer_names, int32_t batch_size)
+      : context_(context), input_layer_names_(input_layer_names), output_layer_names_(output_layer_names_), batch_size_(batch_size)){
+    cudaStreamCreate(&stream_);
+  };
+  void Predict() {
+    if (context_ == nullptr) {
+      throw std::runtime_error("tensorrt prediction error  null context_");
+    }
+    const ICudaEngine &engine = context.getEngine();
 
+    if (engine_->getNbBindings() !=
+        input_layer_names_.size() + output_layer_names_.size()) {
+   throw std::runtime_error(std::string("tensorrt prediction error on " + __LINE__);
+    }
+
+    Profiler profiler(prof_);
+
+    // Set the custom profiler.
+    context_->setProfiler(&profiler);
+
+    context_->enqueue(batch_, inputs_.data(), stream_, nullptr);
+  }
+  template <typename T> void AddInput(T *data, size_t num_elements) {
+    void *gpu_data = nullptr;
+    const auto byte_count = batch_size_ * num_elements * sizeof(T);
+    CHECK_ERROR(cudaMalloc(&gpu_data, byte_count));
+    CHECK_ERROR(cudaMemcpyAsync(gpu_data, host_data, byte_count,
+                                cudaMemcpyHostToDevice, stream_));
+    inputs_.emplace_back(gpu_data);
+    if (inputs_.size() > input_layer_names_.size()) {
+      throw std::runtime_error("invalid input sizes");
+    }
+  }
+
+  template <typename T> void AddOutput(T *data, size_t num_elements) {
+    void *gpu_data = nullptr;
+    const auto byte_count = batch_size_ * num_elements * sizeof(T);
+    CHECK_ERROR(cudaMalloc(&gpu_data, byte_count));
+    output_.emplace_back(gpu_data);
+    if (output_.size() > output_layer_names_.size()) {
+      throw std::runtime_error("invalid input sizes");
+    }
+  }
+
+  const void *GetOutputData(int idx) {
+    syncronize();
+
+    const auto shape = GetOutputShape(idx);
+    const auto element_byte_count = 0;
+    const auto dims = engine->getBindingDimensions(idx);
+    const auto data_type = engine->getBindingDataType(idx);
+    const auto num_elements =
+        std::accumulate(begin(shape), end(shape), 1, std::multiplies<int>());
+    switch (data_type) {
+#define DISPATCH_ADD_INPUT(DType, CType)                                       \
+  case DType:                                                                  \
+    element_byte_count = sizeof(CType);                                        \
+    break;                                                                     \
+    TensorRT_DType_Dispatch(DISPATCH_ADD_INPUT)
+#undef DISPATCH_ADD_INPUT
+    default:
+      throw std::runtime_error("unexpected input type");
+    }
+    const auto byte_count = num_elements * element_byte_count;
+    void *res_data = malloc(byte_count);
+    CHECK(cudaMemCpy(res_data, outputs_[idx], byte_count,
+                     cudaMemcpyDeviceToHost));
+  }
+  std::vector<int> GetOutputShape(int idx) {
+    syncronize();
+
+    const ICudaEngine &engine = context.getEngine();
+
+    const auto dims = engine->getBindingDimensions(idx);
+    const auto ndims = dims.nbDims;
+    std::vector<int> res{};
+    res.reserve(ndims);
+    for (int ii = 0; ii < ndims; ii++) {
+      res.emplace_back(dims[ii]);
+    }
+    return res;
+  }
+
+  synchronize() {
+    cudaStreamSynchronize(stream);
+    ;
+  }
   ~Predictor() {
+    for (auto input : inputs_) {
+      cudaFree(input);
+    }
+    for (auto output : outputs_) {
+      cudaFree(output);
+    }
     if (context_) {
       context_->destroy();
-    }
-    if (engine_) {
-      engine_->destroy();
     }
     if (prof_) {
       prof_->reset();
@@ -108,141 +188,141 @@ public:
 
   ICudaEngine *engine_{nullptr};
   IExecutionContext *context_{nullptr};
-  int batch_;
+  int32_t batch_size_{1};
   std::vector<string> input_layer_names_{nullptr};
   std::vector<string> output_layer_names_{nullptr};
-  std::vector<float *> outputs_{nullptr};
+  std::vector<void *> inputs_{nullptr};
+  std::vector<void *> outputs_{nullptr};
+  cudaStream_t stream_{0};
   profile *prof_{nullptr};
   bool profile_enabled_{false};
 };
 
-void Predictor::SetInput() {}
-
-void Predictor::Predict() {
-  if (engine_->getNbBindings() != 2) {
-    std::cerr << "tensorrt prediction error on " << __LINE__ << "\n";
+Predictor *get_predictor_from_handle(PredictorHandle predictor_handle) {
+  auto predictor = (Predictor *)pred;
+  if (predictor == nullptr) {
+    throw std::runtime_error("expecting a non-nil predictor");
   }
-  if (context_ == nullptr) {
-    std::cerr << "tensorrt prediction error on " << __LINE__
-              << " :: null context_\n";
-  }
-  if (outputs_ != nullptr) {
-    for (int ii = 0; ii < outputs_.size(); ii++) {
-      free(outputs_[ii]);
-    }
-    outputs_ = nullptr;
-  }
-
-  // In order to bind the buffers, we need to know the names of the input and
-  // output tensors.
-  // Note that indices are guaranteed to be less than IEngine::getNbBindings()
-  const int input_index =
-      engine_->getBindingIndex(input_layer_names_[0].c_str());
-  const auto input_dim_ =
-      static_cast<DimsCHW &&>(engine_->getBindingDimensions(input_index));
-  const auto input_byte_size =
-      batch_ * input_dim_.c() * input_dim_.h() * input_dim_.w() * sizeof(float);
-
-  const int output_index =
-      engine_->getBindingIndex(output_layer_names_[0].c_str());
-  const auto output_dim_ =
-      static_cast<DimsCHW &&>(engine_->getBindingDimensions(output_index));
-  pred_len_ = output_dim_.c() * output_dim_.h() * output_dim_.w();
-  const auto output_byte_size = batch_ * pred_len_ * sizeof(float);
-
-  float *input_layer, *output_layer;
-
-  CHECK(cudaMalloc((void **)&input_layer, input_byte_size));
-  CHECK(cudaMalloc((void **)&output_layer, output_byte_size));
-
-  // std::cerr << "size of input = " <<  input_byte_size << "\n";
-  // std::cerr << "size of output = " << output_byte_size << "\n";
-
-  // DMA the input to the GPU,  execute the batch_size asynchronously, and DMA
-  // it back:
-  CHECK(cudaMemcpy(input_layer, inputData, input_byte_size,
-                   cudaMemcpyHostToDevice));
-
-  void *buffers[2] = {input_layer, output_layer};
-
-  Profiler profiler(prof_);
-
-  // Set the custom profiler.
-  context_->setProfiler(&profiler);
-
-  context_->execute(batch_, buffers);
-
-  result_ = (float *)malloc(output_byte_size);
-  CHECK(cudaMemcpy(result_, output_layer, output_byte_size,
-                   cudaMemcpyDeviceToHost));
-
-  // release the stream and the buffers
-  CHECK(cudaFree(input_layer));
-  CHECK(cudaFree(output_layer));
+  return predictor;
 }
 
 PredictorHandle
-NewTensorRT(char *prototxt_file, // caffe prototxt
-            char *weights_file,  // caffe model weights
-            int batch_size, // batch size - NB must be at least as large as the
-                            // batch we want to run with)
-            char **input_layer_name, int len_input_layer_name,
-            char **output_layer_name, int len_output_layer_name) {
-  try {
-    // Create the builder
-    IBuilder *builder = createInferBuilder(gLogger);
-    assert(builder != nullptr);
+NewTensorRTPredictor(TensorRT_ModelFormat model_format, char *deploy_file,
+                     char *weights_file, TensorRT_DType model_datatype,
+                     char **input_layer_names, int32_t num_input_layer_names,
+                     char **output_layer_names, int32_t num_output_layer_names,
+                     int32_t batch_size) {
 
-    // Parse the caffe model to populate the network, then set the outputs
-    INetworkDefinition *network = builder->createNetwork();
-    ICaffeParser *parser = createCaffeParser();
+  START_C_DEFINION;
 
-    const IBlobNameToTensor *blobNameToTensor =
-        parser->parse(prototxt_file, weights_file, *network, DataType::kFLOAT);
-
-    std::vector<std::string> input_layer_name_vec{};
-    for (int ii = 0; ii < len_input_layer_name; ii++) {
-      input_layer_name_vec.emplace_back(input_layer_name[ii]);
-    }
-    std::vector<std::string> output_layer_name_vec{};
-    for (int ii = 0; ii < len_output_layer_name; ii++) {
-      output_layer_name_vec.emplace_back(output_layer_name[ii]);
-    }
-
-    // Specify which tensors are outputs
-    for (auto &s : output_layer_name_vec) {
-      auto loc = blobNameToTensor->find(output_layer_name[0]);
-      if (loc == nullptr) {
-        std::cerr << "cannot find " << output_layer_name
-                  << " in blobNameToTensor\n";
-        return nullptr;
-      }
-      network->markOutput(*loc);
-    }
-
-    // Build the engine
-    builder->setMaxBatchSize(batch_size);
-    builder->setMaxWorkspaceSize(
-        10 << 20); // We need about 6MB of scratch space for the plugin layer
-                   // for batch size 5
-
-    enableDLA(builder, gArgs.useDLACore);
-
-    ICudaEngine *engine = builder->buildCudaEngine(*network);
-    assert(engine);
-
-    // We don't need the network any more, and we can destroy the parser
-    network->destroy();
-    parser->destroy();
-
-    IExecutionContext *context = engine->createExecutionContext();
-    Predictor *pred =
-        new Predictor(engine, context, batch_size, input_layer_name_vec,
-                      output_layer_name_vec);
-    return (PredictorHandle)pred;
-  } catch (const std::invalid_argument &ex) {
-    return nullptr;
+  // Create the builder
+  IBuilder *builder = createInferBuilder(gLogger);
+  if (builder == nullptr) {
+    std::string err =
+        std::string("cannot create tensorrt builder for ") + deploy_file;
+    throw std::runtime_error(err);
   }
+
+  // Parse the caffe model to populate the network, then set the outputs
+  INetworkDefinition *network = builder->createNetwork();
+  ICaffeParser *parser = createCaffeParser();
+  assert(model_format == TensorRT_CaffeFormat);
+  if (paser == nullptr) {
+    std::string err =
+        std::string("cannot create tensorrt paser for ") + deploy_file;
+    throw std::runtime_error(err);
+  }
+
+  DataType blob_data_type = DataType::kFLOAT;
+  switch (model_datatype) {
+  case TensorRT_Byte:
+    blob_data_type = DataType::kINT8;
+    break;
+  case TensorRT_Char:
+    blob_data_type = DataType::kINT8;
+    break;
+  case TensorRT_Int:
+    blob_data_type = DataType::kINT32;
+    break;
+  case TensorRT_Half:
+    blob_data_type = DataType::kHALF;
+    break;
+  case TensorRT_Float:
+    blob_data_type = DataType::kFLOAT;
+    break;
+  default:
+    throw std::runtime_error("invalid model datatype");
+  }
+  const IBlobNameToTensor *blobNameToTensor =
+      parser->parse(deploy_file, weights_file, *network, blob_data_type);
+
+  std::vector<std::string> input_layer_names{};
+  for (int ii = 0; ii < num_input_layer_names; ii++) {
+    input_layer_names.emplace_back(input_layer_names[ii]);
+  }
+  std::vector<std::string> output_layer_names{};
+  for (int ii = 0; ii < num_output_layer_names; ii++) {
+    output_layer_names.emplace_back(output_layer_names[ii]);
+    network->markOutput(blobNameToTensor->find(output_layer_names[ii]));
+  }
+
+  builder->setMaxBatchSize(batch_size);
+  builder->setMaxWorkspaceSize(36 << 20);
+  builder->allowGPUFallback(true);
+
+  builder->setInt8Mode(blob_data_type == DataType::kINT8);
+  builder->setFp16Mode(blob_data_type == DataType::kHALF);
+
+  ICudaEngine *engine = builder->buildCudaEngine(*network);
+
+  network->destroy();
+  parser->destroy();
+
+  IHostMemory *trtModelStream = engine->serialize();
+
+  engine->destroy();
+  builder->destroy();
+
+  IRuntime *runtime = createInferRuntime(gLogger.getTRTLogger());
+  // Deserialize the engine
+  ICudaEngine *engine = runtime->deserializeCudaEngine(
+      trtModelStream->data(), trtModelStream->size(), nullptr);
+
+  IExecutionContext *context = engine->createExecutionContext();
+
+  trtModelStream->destroy();
+
+  auto predictor =
+      new Predictor(context, input_layer_names, output_layer_names, batch_size);
+
+  return (PredictorHandle)predictor;
+
+  END_C_DEFINION;
+}
+
+void TenorRTPredictor_AddInput(PredictorHandle predictor_handle,
+                               TensorRT_DType dtype, void *data,
+                               size_t num_elements) {
+  START_C_DEFINION;
+  auto predictor = get_predictor_from_handle(pred);
+  switch (dtyle) {
+#define DISPATCH_ADD_INPUT(DType, CType)                                       \
+  case DType: {                                                                \
+    predictor->AddInput<CType>((CType *)host_data, num_elements);              \
+    break;                                                                     \
+  }
+    TensorRT_DType_Dispatch(DISPATCH_ADD_INPUT)
+#undef DISPATCH_ADD_INPUT
+        default : throw std::runtime_error("unexpected input type");
+  }
+  END_C_DEFINION;
+}
+
+void TenorRTPredictor_Synchronize(PredictorHandle pred) {
+  START_C_DEFINION;
+  auto predictor = get_predictor_from_handle(pred);
+  CHECK(cudaStreamSynchronize(predictor->stream_));
+  END_C_DEFINION;
 }
 
 void PredictTensorRT(PredictorHandle pred) {
