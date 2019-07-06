@@ -15,17 +15,15 @@ static const TensorRT_ModelFormat TensorRT_CaffeFormat = 1;
 static const TensorRT_ModelFormat TensorRT_OnnxFormat = 2;
 static const TensorRT_ModelFormat TensorRT_TensorFlowFormat = 3;
 
-typedef enum TensorRT_DType {
-  TensorRT_Unknown = 0,
-  TensorRT_Byte = 1,
-  TensorRT_Char = 2,
-  TensorRT_Short = 3,
-  TensorRT_Int = 4,
-  TensorRT_Long = 5,
-  TensorRT_Half = 6,
-  TensorRT_Float = 7,
-  TensorRT_Double = 8,
-} TensorRT_DType;
+static const int TensorRT_Unknown = 0;
+static const int TensorRT_Byte = 1;
+static const int TensorRT_Char = 2;
+static const int TensorRT_Short = 3;
+static const int TensorRT_Int = 4;
+static const int TensorRT_Long = 5;
+static const int TensorRT_Half = 6;
+static const int TensorRT_Float = 7;
+static const int TensorRT_Double = 8;
 
 #define TensorRT_DType_Dispatch(X)                                             \
   X(TensorRT_Byte, uint8_t)                                                    \
