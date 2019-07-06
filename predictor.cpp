@@ -7,15 +7,19 @@
 
 #include "NvCaffeParser.h"
 #include "NvInfer.h"
+#include <NvInferPlugin.h>
 
 #include "json.hpp"
 #include "predictor.hpp"
 #include "timer.h"
 #include "timer.impl.hpp"
 
+#include "half.hpp"
+
+using namespace std;
+using namespace nvinfer1;
 using namespace nvinfer1;
 using namespace nvcaffeparser1;
-using namespace plugin;
 using std::string;
 
 using json = nlohmann::json;
@@ -51,8 +55,6 @@ static void set_error(const std::string &err) {
   clear_error();                                                               \
   return res
 
-#define CHECK(stmt) stmt
-
 class Logger : public ILogger {
   void log(Severity severity, const char *msg) override {
     // suppress info-level messages
@@ -62,13 +64,9 @@ class Logger : public ILogger {
   }
 } gLogger;
 
-#define CHECK(status)                                                          \
-  {                                                                            \
-    if (status != 0) {                                                         \
-      std::cerr << "cuda failure on line " << __LINE__                         \
-                << " status =  " << status << "\n";                            \
-    }                                                                          \
-  }
+#define CHECK(stmt) stmt
+
+#define CHECK_ERROR(stmt) stmt
 
 class Profiler : public IProfiler {
 public:
@@ -115,22 +113,25 @@ private:
 
 class Predictor {
 public:
-  Predictor(IExecutionContext *context, std::vector<std::string> input_layer_names, std::vector<std::string> output_layer_names, int32_t batch_size)
-      : context_(context), input_layer_names_(input_layer_names), output_layer_names_(output_layer_names_), batch_size_(batch_size)){
+  Predictor(IExecutionContext *context,
+            std::vector<std::string> input_layer_names,
+            std::vector<std::string> output_layer_names, int32_t batch_size)
+      : context_(context), input_layer_names_(input_layer_names),
+        output_layer_names_(output_layer_names), batch_size_(batch_size) {
     cudaStreamCreate(&stream_);
-    const ICudaEngine &engine = context.getEngine();
+    const ICudaEngine &engine = context_->getEngine();
     data_.resize(engine.getNbBindings());
   };
   void Run() {
     if (context_ == nullptr) {
       throw std::runtime_error("tensorrt prediction error  null context_");
     }
-    const ICudaEngine &engine = context.getEngine();
+    const ICudaEngine &engine = context_->getEngine();
 
-    if (engine_->getNbBindings() !=
+    if (engine.getNbBindings() !=
         input_layer_names_.size() + output_layer_names_.size()) {
       throw std::runtime_error(std::string("tensorrt prediction error on ") +
-                               __LINE__);
+                               std::to_string(__LINE__));
     }
 
     Profiler profiler(prof_);
@@ -138,12 +139,13 @@ public:
     // Set the custom profiler.
     context_->setProfiler(&profiler);
 
-    context_->enqueue(batch_, data_.data(), stream_, nullptr);
+    context_->enqueue(batch_size_, data_.data(), stream_, nullptr);
   }
   template <typename T>
-  void AddInput(const std::string &name, T *host_data, size_t num_elements) {
+  void AddInput(const std::string &name, const T *host_data,
+                size_t num_elements) {
     void *gpu_data = nullptr;
-    const ICudaEngine &engine = context.getEngine();
+    const ICudaEngine &engine = context_->getEngine();
     const auto idx = engine.getBindingIndex(name.c_str());
     if (idx == -1) {
       throw std::runtime_error(std::string("invalid input name ") + name);
@@ -156,9 +158,9 @@ public:
   }
 
   template <typename T>
-  void AddOutput(const std::string &name, T *data, size_t num_elements) {
+  void AddOutput(const std::string &name, size_t num_elements) {
     void *gpu_data = nullptr;
-    const ICudaEngine &engine = context.getEngine();
+    const ICudaEngine &engine = context_->getEngine();
     const auto idx = engine.getBindingIndex(name.c_str());
     if (idx == -1) {
       throw std::runtime_error(std::string("invalid output name ") + name);
@@ -168,10 +170,10 @@ public:
     data_[idx] = gpu_data;
   }
 
-  const void *GetOutputData(const std::string &name) {
-    syncronize();
+  void *GetOutputData(const std::string &name) {
+    synchronize();
 
-    const ICudaEngine &engine = context.getEngine();
+    const ICudaEngine &engine = context_->getEngine();
     const auto idx = engine.getBindingIndex(name.c_str());
     if (idx == -1) {
       throw std::runtime_error(std::string("invalid output name ") + name);
@@ -183,8 +185,7 @@ public:
     }
 
     const auto shape = GetOutputShape(name);
-    const auto element_byte_count = 0;
-    const auto dims = engine.getBindingDimensions(idx);
+    auto element_byte_count = 0;
     const auto data_type = engine.getBindingDataType(idx);
     const auto num_elements =
         std::accumulate(begin(shape), end(shape), 1, std::multiplies<int>());
@@ -200,13 +201,12 @@ public:
     }
     const auto byte_count = num_elements * element_byte_count;
     void *res_data = malloc(byte_count);
-    CHECK(cudaMemCpy(res_data, outputs_[idx], byte_count,
-                     cudaMemcpyDeviceToHost));
+    CHECK(cudaMemcpy(res_data, data_[idx], byte_count, cudaMemcpyDeviceToHost));
   }
   std::vector<int> GetOutputShape(const std::string &name) {
-    syncronize();
+    synchronize();
 
-    const ICudaEngine &engine = context.getEngine();
+    const ICudaEngine &engine = context_->getEngine();
     const auto idx = engine.getBindingIndex(name.c_str());
     if (idx == -1) {
       throw std::runtime_error(std::string("invalid output name ") + name);
@@ -217,12 +217,12 @@ public:
     std::vector<int> res{};
     res.reserve(ndims);
     for (int ii = 0; ii < ndims; ii++) {
-      res.emplace_back(dims[ii]);
+      res.emplace_back(dims.d[ii]);
     }
     return res;
   }
 
-  synchronize() { CHECK(cudaStreamSynchronize(stream)); }
+  void synchronize() { CHECK(cudaStreamSynchronize(stream_)); }
   ~Predictor() {
     for (auto data : data_) {
       cudaFree(data);
@@ -248,7 +248,7 @@ public:
 };
 
 Predictor *get_predictor_from_handle(PredictorHandle predictor_handle) {
-  auto predictor = (Predictor *)pred;
+  auto predictor = (Predictor *)predictor_handle;
   if (predictor == nullptr) {
     throw std::runtime_error("expecting a non-nil predictor");
   }
@@ -276,7 +276,7 @@ NewTensorRTPredictor(TensorRT_ModelFormat model_format, char *deploy_file,
   INetworkDefinition *network = builder->createNetwork();
   ICaffeParser *parser = createCaffeParser();
   assert(model_format == TensorRT_CaffeFormat);
-  if (paser == nullptr) {
+  if (parser == nullptr) {
     std::string err =
         std::string("cannot create tensorrt paser for ") + deploy_file;
     throw std::runtime_error(err);
@@ -312,7 +312,8 @@ NewTensorRTPredictor(TensorRT_ModelFormat model_format, char *deploy_file,
   std::vector<std::string> output_layer_names{};
   for (int ii = 0; ii < num_output_layer_names; ii++) {
     output_layer_names.emplace_back(output_layer_names[ii]);
-    network->markOutput(blobNameToTensor->find(output_layer_names[ii]));
+    network->markOutput(
+        *blobNameToTensor->find(output_layer_names[ii].c_str()));
   }
 
   builder->setMaxBatchSize(batch_size);
@@ -327,17 +328,17 @@ NewTensorRTPredictor(TensorRT_ModelFormat model_format, char *deploy_file,
   network->destroy();
   parser->destroy();
 
-  IHostMemory *trtModelStream = engine.serialize();
+  IHostMemory *trtModelStream = engine->serialize();
 
-  engine.destroy();
+  engine->destroy();
   builder->destroy();
 
-  IRuntime *runtime = createInferRuntime(gLogger.getTRTLogger());
+  IRuntime *runtime = createInferRuntime(gLogger);
   // Deserialize the engine
   ICudaEngine *runtime_engine = runtime->deserializeCudaEngine(
       trtModelStream->data(), trtModelStream->size(), nullptr);
 
-  IExecutionContext *context = runtime_engine.createExecutionContext();
+  IExecutionContext *context = runtime_engine->createExecutionContext();
 
   trtModelStream->destroy();
 
@@ -346,84 +347,85 @@ NewTensorRTPredictor(TensorRT_ModelFormat model_format, char *deploy_file,
 
   return (PredictorHandle)predictor;
 
-  END_C_DEFINION;
+  END_C_DEFINION(nullptr);
 }
 
 void TenorRTPredictor_AddInput(PredictorHandle predictor_handle,
-                               TensorRT_DType dtype, void *data,
-                               size_t num_elements) {
+                               const char *name, TensorRT_DType dtype,
+                               void *host_data, size_t num_elements) {
   START_C_DEFINION();
-  auto predictor = get_predictor_from_handle(pred);
+  auto predictor = get_predictor_from_handle(predictor_handle);
+  switch (dtype) {
 #define DISPATCH_ADD_INPUT(DType, CType)                                       \
   case DType:                                                                  \
-    predictor->AddInput<CType>((CType *)host_data, num_elements);              \
-    break
-  switch (dtype) {
+    predictor->AddInput<CType>(name, reinterpret_cast<CType *>(host_data),     \
+                               num_elements);                                  \
+    break;
     TensorRT_DType_Dispatch(DISPATCH_ADD_INPUT);
+#undef DISPATCH_ADD_INPUT
   default:
     throw std::runtime_error("unexpected input type");
   }
-#undef DISPATCH_ADD_INPUT
   END_C_DEFINION();
 }
 
-void TenorRTPredictor_Synchronize(PredictorHandle pred) {
+void TenorRTPredictor_Synchronize(PredictorHandle predictor_handle) {
   START_C_DEFINION();
-  auto predictor = get_predictor_from_handle(pred);
+  auto predictor = get_predictor_from_handle(predictor_handle);
   CHECK(predictor->synchronize());
   END_C_DEFINION();
 }
 
-void TenorRTPredictor_Run(PredictorHandle pred) {
+void TenorRTPredictor_Run(PredictorHandle predictor_handle) {
   START_C_DEFINION();
-  auto predictor = get_predictor_from_handle(pred);
+  auto predictor = get_predictor_from_handle(predictor_handle);
   predictor->Run();
   END_C_DEFINION();
 }
 
-int TenorRTPredictor_GetNumOutputs(PredictorHandle pred) {
+int TenorRTPredictor_GetNumOutputs(PredictorHandle predictor_handle) {
   START_C_DEFINION();
-  auto predictor = get_predictor_from_handle(pred);
+  auto predictor = get_predictor_from_handle(predictor_handle);
   return predictor->output_layer_names_.size();
   END_C_DEFINION(-1);
 }
 
-void *TenorRTPredictor_GetOutput(PredictorHandle pred, char *name,
-                                 int32_t *ndims, int32_t **dims) {
+void *TenorRTPredictor_GetOutput(PredictorHandle predictor_handle,
+                                 const char *name, int32_t *ndims,
+                                 int32_t **res_dims) {
   START_C_DEFINION();
-  auto predictor = get_predictor_from_handle(pred);
+  auto predictor = get_predictor_from_handle(predictor_handle);
   auto dims = predictor->GetOutputShape(name);
   void *data = predictor->GetOutputData(name);
   *ndims = dims.size();
-  *dims = malloc(sizeof(int32_t) * (*ndims));
-  memcpy(*dims, dims.data(), sizeof(int32_t) * (*ndims));
+  *res_dims = (int32_t *)malloc(sizeof(int32_t) * (*ndims));
+  memcpy(*res_dims, dims.data(), sizeof(int32_t) * (*ndims));
   return data;
   END_C_DEFINION(nullptr);
 }
 
-bool TenorRTPredictor_HasError(PredictorHandle pred) { return has_error; }
+bool TenorRTPredictor_HasError(PredictorHandle predictor_handle) {
+  return has_error;
+}
 
-char *TenorRTPredictor_GetLastError(PredictorHandle pred) {
+const char *TenorRTPredictor_GetLastError(PredictorHandle predictor_handle) {
   return error_string.c_str();
 }
 
-void TenorRTPredictor_Delete(PredictorHandle pred) {
+void TenorRTPredictor_Delete(PredictorHandle predictor_handle) {
   START_C_DEFINION();
-  auto predictor = get_predictor_from_handle(pred);
+  auto predictor = get_predictor_from_handle(predictor_handle);
   if (predictor != nullptr) {
     delete predictor;
   }
   END_C_DEFINION();
 }
 
-void TenorRTPredictor_StartProfiling(PredictorHandle pred, const char *name,
-                                     const char *metadata) {
+void TenorRTPredictor_StartProfiling(PredictorHandle predictor_handle,
+                                     const char *name, const char *metadata) {
 
   START_C_DEFINION();
-  auto predictor = get_predictor_from_handle(pred);
-  if (predictor == nullptr) {
-    return;
-  }
+  auto predictor = get_predictor_from_handle(predictor_handle);
   if (name == nullptr) {
     name = "";
   }
@@ -440,10 +442,7 @@ void TenorRTPredictor_StartProfiling(PredictorHandle pred, const char *name,
 
 void TenorRTPredictor_EndProfiling(PredictorHandle pred) {
   START_C_DEFINION();
-  auto predictor = (Predictor *)pred;
-  if (predictor == nullptr) {
-    return;
-  }
+  auto predictor = get_predictor_from_handle(pred);
   if (predictor->prof_) {
     predictor->prof_->end();
   }
@@ -465,6 +464,6 @@ char *TenorRTPredictor_ReadProfiling(PredictorHandle pred) {
   END_C_DEFINION(nullptr);
 }
 
-void TensoRT_Init() { initLibNvInferPlugins(gLogger, ""); }
+void TensoRT_Init() { initLibNvInferPlugins(&gLogger, ""); }
 
 #endif // __linux__
