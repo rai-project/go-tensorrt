@@ -1,9 +1,11 @@
 #ifndef __PREDICTOR_HPP__
 #define __PREDICTOR_HPP__
 
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
+#include "stdbool.h"
+#include "stdint.h"
+#include "stdio.h"
+#include "stdlib.h"
+#include "string.h"
 
 typedef void *PredictorHandle;
 
@@ -51,31 +53,24 @@ void TenorRTPredictor_Synchronize(PredictorHandle pred);
 
 void TenorRTPredictor_Run(PredictorHandle pred);
 
-void TenorRTPredictor_GetNumOutputs(PredictorHandle pred);
+int TenorRTPredictor_GetNumOutputs(PredictorHandle pred);
 
-void *TenorRTPredictor_GetOutput(PredictorHandle pred, int32_t idx);
+void *TenorRTPredictor_GetOutput(PredictorHandle pred, char *name,
+                                 int32_t *ndims, int32_t *dims);
 
 bool TenorRTPredictor_HasError(PredictorHandle pred);
 
-const char *TenorRTPredictor_GetLastError(PredictorHandle pred);
-
-float *GetPredictionsTensorRT(PredictorHandle pred);
+char *TenorRTPredictor_GetLastError(PredictorHandle pred);
 
 void TenorRTPredictor_Delete(PredictorHandle pred);
 
 void TenorRTPredictor_StartProfiling(PredictorHandle pred, const char *name,
                                      const char *metadata);
 
-void TenorRTPredictor_EnableProfiling(PredictorHandle pred);
-
-void TenorRTPredictor_DisableProfiling(PredictorHandle pred);
+void TenorRTPredictor_EndProfiling(PredictorHandle pred);
 
 char *TenorRTPredictor_ReadProfiling(PredictorHandle pred);
 
-void InitTensorRT();
-
-#ifdef __cplusplus
-}
-#endif // __cplusplus
+void TensoRT_Init();
 
 #endif // __PREDICTOR_HPP__
