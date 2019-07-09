@@ -160,6 +160,7 @@ func prod(sz []int) int {
 	return res
 }
 
+// ReadPredictionOutput ...
 func (p *Predictor) ReadPredictionOutput(name string) []float32 {
 	cname := C.CString(name)
 	defer C.free(unsafe.Pointer(cname))
