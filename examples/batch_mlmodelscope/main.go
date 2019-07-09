@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/Unknwon/com"
+
 	"github.com/anthonynsimon/bild/imgio"
 	"github.com/anthonynsimon/bild/transform"
 	"github.com/k0kubun/pp"
@@ -22,7 +24,9 @@ import (
 	nvidiasmi "github.com/rai-project/nvidia-smi"
 	"github.com/rai-project/tracer"
 	_ "github.com/rai-project/tracer/all"
+
 	"github.com/rai-project/tracer/ctimer"
+	gotensor "gorgonia.org/tensor"
 )
 
 var (
@@ -31,11 +35,17 @@ var (
 	shape       = []int{1, 3, 227, 227}
 	mean        = []float32{123, 117, 104}
 	scale       = []float32{1.0, 1.0, 1.0}
-	imgDir, _   = filepath.Abs("../../_fixtures")
+	imgDir, _   = filepath.Abs("../_fixtures")
 	imgPath     = filepath.Join(imgDir, "platypus.jpg")
 	graph_url   = "https://raw.githubusercontent.com/BVLC/caffe/master/models/bvlc_alexnet/deploy.prototxt"
 	weights_url = "http://dl.caffe.berkeleyvision.org/bvlc_alexnet.caffemodel"
 	synset_url  = "http://s3.amazonaws.com/store.carml.org/synsets/imagenet/synset.txt"
+
+	baseDir, _ = filepath.Abs("../tmp")
+	dir        = filepath.Join(baseDir, model)
+	graph      = filepath.Join(dir, "deploy.prototxt")
+	weights    = filepath.Join(dir, model+".caffemodel")
+	synset     = filepath.Join(dir, "synset.txt")
 )
 
 // convert go Image to 1-dim array
@@ -52,9 +62,9 @@ func cvtRGBImageToNCHW1DArray(src image.Image, mean []float32, scale []float32) 
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			r, g, b, _ := src.At(x+in.Min.X, y+in.Min.Y).RGBA()
-			out[y*width+x] = (float32(b) - mean[2]) / scale[2]
+			out[y*width+x] = (float32(r) - mean[2]) / scale[2]
 			out[width*height+y*width+x] = (float32(g) - mean[1]) / scale[1]
-			out[2*width*height+y*width+x] = (float32(r) - mean[0]) / scale[0]
+			out[2*width*height+y*width+x] = (float32(b) - mean[0]) / scale[0]
 		}
 	}
 
@@ -63,12 +73,6 @@ func cvtRGBImageToNCHW1DArray(src image.Image, mean []float32, scale []float32) 
 
 func main() {
 	defer tracer.Close()
-
-	dir, _ := filepath.Abs("../tmp")
-	dir = filepath.Join(dir, model)
-	graph := filepath.Join(dir, "deploy.prototxt")
-	weights := filepath.Join(dir, model+".caffemodel")
-	synset := filepath.Join(dir, "synset.txt")
 
 	if !com.IsFile(graph) {
 		if _, err := downloadmanager.DownloadInto(graph_url, dir); err != nil {
@@ -119,9 +123,9 @@ func main() {
 	in := options.Node{
 		Key:   "data",
 		Shape: shape,
+		Dtype: gotensor.Float32,
 	}
 
-	
 	predictor, err := tensorrt.New(
 		ctx,
 		options.WithOptions(opts),
@@ -132,6 +136,7 @@ func main() {
 		options.InputNodes([]options.Node{in}),
 		options.OutputNodes([]options.Node{
 			options.Node{
+				Key:   "prob",
 				Dtype: gotensor.Float32,
 			},
 		}),
@@ -164,7 +169,6 @@ func main() {
 
 	predictor.EndProfiling()
 
-
 	if enableCupti {
 		cu.Wait()
 		cu.Close()
@@ -174,7 +178,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	predictor.DisableProfiling()
 
 	t, err := ctimer.New(profBuffer)
 	if err != nil {
@@ -182,10 +185,12 @@ func main() {
 	}
 	t.Publish(ctx, tracer.FRAMEWORK_TRACE)
 
-	output, err := predictor.ReadOutputData(ctx, 0)
+	outputs, err := predictor.ReadPredictionOutputs(ctx)
 	if err != nil {
 		panic(err)
 	}
+
+	output := outputs[0]
 
 	var labels []string
 	f, err := os.Open(synset)

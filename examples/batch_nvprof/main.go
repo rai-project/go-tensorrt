@@ -16,6 +16,8 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/Unknwon/com"
+
 	"github.com/anthonynsimon/bild/imgio"
 	"github.com/anthonynsimon/bild/transform"
 	"github.com/k0kubun/pp"
@@ -69,19 +71,17 @@ func main() {
 	weights := filepath.Join(dir, "bvlc_alexnet.caffemodel")
 	synset := filepath.Join(dir, "synset.txt")
 
-	if _, err := os.Stat(graph); os.IsNotExist(err) {
+	if !com.IsFile(graph) {
 		if _, err := downloadmanager.DownloadInto(graph_url, dir); err != nil {
 			panic(err)
 		}
 	}
-	if _, err := os.Stat(weights); os.IsNotExist(err) {
-
+	if !com.IsFile(graph) {
 		if _, err := downloadmanager.DownloadInto(weights_url, dir); err != nil {
 			panic(err)
 		}
 	}
-	if _, err := os.Stat(synset); os.IsNotExist(err) {
-
+	if !com.IsFile(synset) {
 		if _, err := downloadmanager.DownloadInto(synset_url, dir); err != nil {
 			panic(err)
 		}

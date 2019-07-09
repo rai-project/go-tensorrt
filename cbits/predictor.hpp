@@ -1,42 +1,100 @@
 #ifndef __PREDICTOR_HPP__
 #define __PREDICTOR_HPP__
 
+#include "stdbool.h"
+#include "stdint.h"
+#include "stdio.h"
+#include "stdlib.h"
+#include "string.h"
+
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif // __cplusplus
 
-    typedef void *PredictorHandle;
+typedef void *PredictorHandle;
 
-    PredictorHandle NewTensorRT(char *deploy_file,
-                                char *weights_file,
-                                int batch_size,
-                                char **input_layer_name,
-                                int len_input_layer_name,
-                                char **output_layer_name,
-                                int len_output_layer_name,
-                                int shape_len);
+// typedef int TensorRT_ModelFormat;
 
-    void InitTensorRT();
+// static const TensorRT_ModelFormat TensorRT_CaffeFormat = 1;
+// static const TensorRT_ModelFormat TensorRT_OnnxFormat = 2;
+// static const TensorRT_ModelFormat TensorRT_TensorFlowFormat = 3;
 
-    void PredictTensorRT(PredictorHandle pred, float *imageData);
+typedef enum TensorRT_ModelFormat {
+  TensorRT_CaffeFormat = 1,
+  TensorRT_OnnxFormat = 2,
+  TensorRT_TensorFlowFormat = 3
+} TensorRT_ModelFormat;
 
-    float *GetPredictionsTensorRT(PredictorHandle pred);
+typedef enum TensorRT_DType {
+  TensorRT_Unknown = 0,
+  TensorRT_Byte = 1,
+  TensorRT_Char = 2,
+  TensorRT_Short = 3,
+  TensorRT_Int = 4,
+  TensorRT_Long = 5,
+  TensorRT_Half = 6,
+  TensorRT_Float = 7,
+  TensorRT_Double = 8
+} TensorRT_DType;
 
-    void DeleteTensorRT(PredictorHandle pred);
+// typedef int TensorRT_DType;
 
-    void StartProfilingTensorRT(PredictorHandle pred, const char *name,
-                                const char *metadata);
+// static const TensorRT_DType TensorRT_Unknown = 0;
+// static const TensorRT_DType TensorRT_Byte = 1;
+// static const TensorRT_DType TensorRT_Char = 2;
+// static const TensorRT_DType TensorRT_Short = 3;
+// static const TensorRT_DType TensorRT_Int = 4;
+// static const TensorRT_DType TensorRT_Long = 5;
+// static const TensorRT_DType TensorRT_Half = 6;
+// static const TensorRT_DType TensorRT_Float = 7;
+// static const TensorRT_DType TensorRT_Double = 8;
 
-    void EndProfilingTensorRT(PredictorHandle pred);
+#define TensorRT_DType_Dispatch(X)                                             \
+  X(TensorRT_Byte, uint8_t)                                                    \
+  X(TensorRT_Char, char)                                                       \
+  X(TensorRT_Short, int16_t)                                                   \
+  X(TensorRT_Int, int32_t)                                                     \
+  X(TensorRT_Long, int64_t)                                                    \
+  X(TensorRT_Half, float16)                                                    \
+  X(TensorRT_Float, float)                                                     \
+  X(TensorRT_Double, double)
 
-    void DisableProfilingTensorRT(PredictorHandle pred);
+PredictorHandle
+NewTensorRTPredictor(TensorRT_ModelFormat model_format, char *deploy_file,
+                     char *weights_file, TensorRT_DType model_datatype,
+                     char **input_layer_names, int32_t num_input_layer_names,
+                     char **output_layer_names, int32_t num_output_layer_names,
+                     int32_t batch_size);
 
-    char *ReadProfileTensorRT(PredictorHandle pred);
+void TenorRTPredictor_SetDevice(PredictorHandle pred, int32_t device);
 
-    int GetShapeLenTensorRT(PredictorHandle pred);
+void TenorRTPredictor_AddInput(PredictorHandle pred, const char *name,
+                               TensorRT_DType dtype, void *data,
+                               size_t num_elements);
 
-    int GetPredLenTensorRT(PredictorHandle pred);
+void TenorRTPredictor_Synchronize(PredictorHandle pred);
+
+void TenorRTPredictor_Run(PredictorHandle pred);
+
+int TenorRTPredictor_GetNumOutputs(PredictorHandle pred);
+
+void *TenorRTPredictor_GetOutput(PredictorHandle pred, const char *name,
+                                 int32_t *ndims, int32_t **dims);
+
+bool TenorRTPredictor_HasError(PredictorHandle pred);
+
+const char *TenorRTPredictor_GetLastError(PredictorHandle pred);
+
+void TenorRTPredictor_Delete(PredictorHandle pred);
+
+void TenorRTPredictor_StartProfiling(PredictorHandle pred, const char *name,
+                                     const char *metadata);
+
+void TenorRTPredictor_EndProfiling(PredictorHandle pred);
+
+char *TenorRTPredictor_ReadProfiling(PredictorHandle pred);
+
+void TensoRT_Init();
 
 #ifdef __cplusplus
 }
