@@ -10,3 +10,5 @@ tensorrt
 main
 
 batch
+e.tmp
+batch_mlmodelscope
