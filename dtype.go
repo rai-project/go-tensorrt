@@ -15,7 +15,7 @@ type DType C.TensorRT_DType
 
 
 const (
-  UnknownType DType = C.TensorRT_Unknown
+	UnknownType DType = C.TensorRT_Unknown
 	// Byte byte tensors (go type uint8)
 	Byte DType = C.TensorRT_Byte
 	// Char char tensor (go type int8)
