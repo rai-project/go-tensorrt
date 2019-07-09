@@ -1,5 +1,6 @@
 package tensorrt
 
+// ModelFormat ...
 type ModelFormat int
 
 const (
