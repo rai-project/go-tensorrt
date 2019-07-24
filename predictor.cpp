@@ -27,42 +27,51 @@ using json = nlohmann::json;
 static bool has_error = false;
 static std::string error_string{""};
 
-static void clear_error() {
+static void clear_error()
+{
   has_error = false;
   error_string = "";
 }
 
-static void set_error(const std::string &err) {
+static void set_error(const std::string &err)
+{
   has_error = true;
   error_string = err;
 }
 
-#define START_C_DEFINION()                                                     \
-  clear_error();                                                               \
-  try {
+#define START_C_DEFINION() \
+  clear_error();           \
+  try                      \
+  {
 
-#define END_C_DEFINION(res)                                                    \
-  }                                                                            \
-  catch (const std::exception &e) {                                            \
-    std::cerr << "ERROR: " << e.what() << "\n";                                \
-    set_error(e.what());                                                       \
-  }                                                                            \
-  catch (const std::string &e) {                                               \
-    std::cerr << "ERROR: " << e << "\n";                                       \
-    set_error(e);                                                              \
-  }                                                                            \
-  catch (...) {                                                                \
-    std::cerr << "ERROR: unknown exception in go-tensorrt"                     \
-              << "\n";                                                         \
-    set_error("unknown exception in go-tensorrt");                             \
-  }                                                                            \
-  clear_error();                                                               \
+#define END_C_DEFINION(res)                                \
+  }                                                        \
+  catch (const std::exception &e)                          \
+  {                                                        \
+    std::cerr << "ERROR: " << e.what() << "\n";            \
+    set_error(e.what());                                   \
+  }                                                        \
+  catch (const std::string &e)                             \
+  {                                                        \
+    std::cerr << "ERROR: " << e << "\n";                   \
+    set_error(e);                                          \
+  }                                                        \
+  catch (...)                                              \
+  {                                                        \
+    std::cerr << "ERROR: unknown exception in go-tensorrt" \
+              << "\n";                                     \
+    set_error("unknown exception in go-tensorrt");         \
+  }                                                        \
+  clear_error();                                           \
   return res
 
-class Logger : public ILogger {
-  void log(Severity severity, const char *msg) override {
+class Logger : public ILogger
+{
+  void log(Severity severity, const char *msg) override
+  {
     // suppress info-level messages
-    if (severity != Severity::kINFO) {
+    if (severity != Severity::kINFO)
+    {
       std::cout << msg << std::endl;
     }
   }
@@ -72,10 +81,13 @@ class Logger : public ILogger {
 
 #define CHECK_ERROR(stmt) stmt
 
-class Profiler : public IProfiler {
+class Profiler : public IProfiler
+{
 public:
-  Profiler(profile *prof) : prof_(prof) {
-    if (prof_ == nullptr) {
+  Profiler(profile *prof) : prof_(prof)
+  {
+    if (prof_ == nullptr)
+    {
       return;
     }
     prof_->start(); // reset start time
@@ -88,9 +100,11 @@ public:
    * definition
    * \param ms the time in milliseconds to execute the layer
    */
-  virtual void reportLayerTime(const char *layer_name, float ms) {
+  virtual void reportLayerTime(const char *layer_name, float ms)
+  {
 
-    if (prof_ == nullptr) {
+    if (prof_ == nullptr)
+    {
       return;
     }
 
@@ -115,25 +129,30 @@ private:
   timestamp_t current_time_{};
 };
 
-class Predictor {
+class Predictor
+{
 public:
   Predictor(IExecutionContext *context,
             std::vector<std::string> input_layer_names,
             std::vector<std::string> output_layer_names, int32_t batch_size)
       : context_(context), input_layer_names_(input_layer_names),
-        output_layer_names_(output_layer_names), batch_size_(batch_size) {
+        output_layer_names_(output_layer_names), batch_size_(batch_size)
+  {
     cudaStreamCreate(&stream_);
     const ICudaEngine &engine = context_->getEngine();
     data_.resize(engine.getNbBindings());
   };
-  void Run() {
-    if (context_ == nullptr) {
+  void Run()
+  {
+    if (context_ == nullptr)
+    {
       throw std::runtime_error("tensorrt prediction error  null context_");
     }
     const ICudaEngine &engine = context_->getEngine();
 
     if (engine.getNbBindings() !=
-        input_layer_names_.size() + output_layer_names_.size()) {
+        input_layer_names_.size() + output_layer_names_.size())
+    {
       throw std::runtime_error(std::string("tensorrt prediction error on ") +
                                std::to_string(__LINE__));
     }
@@ -147,11 +166,13 @@ public:
   }
   template <typename T>
   void AddInput(const std::string &name, const T *host_data,
-                size_t num_elements) {
+                size_t num_elements)
+  {
     void *gpu_data = nullptr;
     const ICudaEngine &engine = context_->getEngine();
     const auto idx = engine.getBindingIndex(name.c_str());
-    if (idx == -1) {
+    if (idx == -1)
+    {
       throw std::runtime_error(std::string("invalid input name ") + name);
     }
     const auto byte_count = batch_size_ * num_elements * sizeof(T);
@@ -162,11 +183,13 @@ public:
   }
 
   template <typename T>
-  void AddOutput(const std::string &name, size_t num_elements) {
+  void AddOutput(const std::string &name, size_t num_elements)
+  {
     void *gpu_data = nullptr;
     const ICudaEngine &engine = context_->getEngine();
     const auto idx = engine.getBindingIndex(name.c_str());
-    if (idx == -1) {
+    if (idx == -1)
+    {
       throw std::runtime_error(std::string("invalid output name ") + name);
     }
     const auto byte_count = batch_size_ * num_elements * sizeof(T);
@@ -174,16 +197,19 @@ public:
     data_[idx] = gpu_data;
   }
 
-  void *GetOutputData(const std::string &name) {
+  void *GetOutputData(const std::string &name)
+  {
     synchronize();
 
     const ICudaEngine &engine = context_->getEngine();
     const auto idx = engine.getBindingIndex(name.c_str());
-    if (idx == -1) {
+    if (idx == -1)
+    {
       throw std::runtime_error(std::string("invalid output name ") + name);
     }
 
-    if (engine.bindingIsInput(idx)) {
+    if (engine.bindingIsInput(idx))
+    {
       throw std::runtime_error(std::string("the layer name is not an output ") +
                                name);
     }
@@ -194,11 +220,12 @@ public:
     const size_t num_elements =
         std::accumulate(begin(shape), end(shape), 1, std::multiplies<size_t>());
     std::cout << "shape = " << shape[0] << "\n";
-    switch (data_type) {
-#define DISPATCH_GET_OUTPUT(DType, CType)                                      \
-  case DType:                                                                  \
-    element_byte_count = sizeof(CType);                                        \
-    break;                                                                     \
+    switch (data_type)
+    {
+#define DISPATCH_GET_OUTPUT(DType, CType) \
+  case DType:                             \
+    element_byte_count = sizeof(CType);   \
+    break;                                \
     TensorRT_DType_Dispatch(DISPATCH_GET_OUTPUT)
 #undef DISPATCH_GET_OUTPUT
     case DataType::kFLOAT:
@@ -222,12 +249,14 @@ public:
     CHECK(cudaMemcpy(res_data, data_[idx], byte_count, cudaMemcpyDeviceToHost));
     return res_data;
   }
-  std::vector<int32_t> GetOutputShape(const std::string &name) {
+  std::vector<int32_t> GetOutputShape(const std::string &name)
+  {
     synchronize();
 
     const ICudaEngine &engine = context_->getEngine();
     const auto idx = engine.getBindingIndex(name.c_str());
-    if (idx == -1) {
+    if (idx == -1)
+    {
       throw std::runtime_error(std::string("invalid output name ") + name);
     }
 
@@ -238,7 +267,8 @@ public:
     std::cout << __LINE__ << "  >>> "
               << "ndims = " << ndims << "\n";
     std::vector<int> res{};
-    for (int ii = 0; ii < ndims; ii++) {
+    for (int ii = 0; ii < ndims; ii++)
+    {
       std::cout << __LINE__ << "  >>> " << ii << "  ==  " << dims.d[ii] << "\n";
       res.emplace_back(dims.d[ii]);
     }
@@ -248,14 +278,18 @@ public:
   }
 
   void synchronize() { CHECK(cudaStreamSynchronize(stream_)); }
-  ~Predictor() {
-    for (auto data : data_) {
+  ~Predictor()
+  {
+    for (auto data : data_)
+    {
       cudaFree(data);
     }
-    if (context_) {
+    if (context_)
+    {
       context_->destroy();
     }
-    if (prof_) {
+    if (prof_)
+    {
       prof_->reset();
       delete prof_;
       prof_ = nullptr;
@@ -272,9 +306,11 @@ public:
   bool profile_enabled_{false};
 };
 
-Predictor *get_predictor_from_handle(PredictorHandle predictor_handle) {
+Predictor *get_predictor_from_handle(PredictorHandle predictor_handle)
+{
   auto predictor = (Predictor *)predictor_handle;
-  if (predictor == nullptr) {
+  if (predictor == nullptr)
+  {
     throw std::runtime_error("expecting a non-nil predictor");
   }
   return predictor;
@@ -285,13 +321,15 @@ NewTensorRTPredictor(TensorRT_ModelFormat model_format, char *deploy_file,
                      char *weights_file, TensorRT_DType model_datatype,
                      char **input_layer_names, int32_t num_input_layer_names,
                      char **output_layer_names, int32_t num_output_layer_names,
-                     int32_t batch_size) {
+                     int32_t batch_size)
+{
 
   START_C_DEFINION();
 
   // Create the builder
   IBuilder *builder = createInferBuilder(gLogger);
-  if (builder == nullptr) {
+  if (builder == nullptr)
+  {
     std::string err =
         std::string("cannot create tensorrt builder for ") + deploy_file;
     throw std::runtime_error(err);
@@ -301,14 +339,16 @@ NewTensorRTPredictor(TensorRT_ModelFormat model_format, char *deploy_file,
   INetworkDefinition *network = builder->createNetwork();
   ICaffeParser *parser = createCaffeParser();
   assert(model_format == TensorRT_CaffeFormat);
-  if (parser == nullptr) {
+  if (parser == nullptr)
+  {
     std::string err =
         std::string("cannot create tensorrt paser for ") + deploy_file;
     throw std::runtime_error(err);
   }
 
   DataType blob_data_type = DataType::kFLOAT;
-  switch (model_datatype) {
+  switch (model_datatype)
+  {
   case TensorRT_Byte:
     blob_data_type = DataType::kINT8;
     break;
@@ -331,11 +371,13 @@ NewTensorRTPredictor(TensorRT_ModelFormat model_format, char *deploy_file,
       parser->parse(deploy_file, weights_file, *network, blob_data_type);
 
   std::vector<std::string> input_layer_names_vec{};
-  for (int ii = 0; ii < num_input_layer_names; ii++) {
+  for (int ii = 0; ii < num_input_layer_names; ii++)
+  {
     input_layer_names_vec.emplace_back(input_layer_names[ii]);
   }
   std::vector<std::string> output_layer_names_vec{};
-  for (int ii = 0; ii < num_output_layer_names; ii++) {
+  for (int ii = 0; ii < num_output_layer_names; ii++)
+  {
     output_layer_names_vec.emplace_back(output_layer_names[ii]);
     network->markOutput(*blobNameToTensor->find(output_layer_names[ii]));
   }
@@ -376,14 +418,16 @@ NewTensorRTPredictor(TensorRT_ModelFormat model_format, char *deploy_file,
 
 void TenorRTPredictor_AddInput(PredictorHandle predictor_handle,
                                const char *name, TensorRT_DType dtype,
-                               void *host_data, size_t num_elements) {
+                               void *host_data, size_t num_elements)
+{
   START_C_DEFINION();
   auto predictor = get_predictor_from_handle(predictor_handle);
-  switch (dtype) {
-#define DISPATCH_ADD_INPUT(DType, CType)                                       \
-  case DType:                                                                  \
-    predictor->AddInput<CType>(name, reinterpret_cast<CType *>(host_data),     \
-                               num_elements);                                  \
+  switch (dtype)
+  {
+#define DISPATCH_ADD_INPUT(DType, CType)                                   \
+  case DType:                                                              \
+    predictor->AddInput<CType>(name, reinterpret_cast<CType *>(host_data), \
+                               num_elements);                              \
     break;
     TensorRT_DType_Dispatch(DISPATCH_ADD_INPUT);
 #undef DISPATCH_ADD_INPUT
@@ -393,21 +437,24 @@ void TenorRTPredictor_AddInput(PredictorHandle predictor_handle,
   END_C_DEFINION();
 }
 
-void TenorRTPredictor_Synchronize(PredictorHandle predictor_handle) {
+void TenorRTPredictor_Synchronize(PredictorHandle predictor_handle)
+{
   START_C_DEFINION();
   auto predictor = get_predictor_from_handle(predictor_handle);
   CHECK(predictor->synchronize());
   END_C_DEFINION();
 }
 
-void TenorRTPredictor_Run(PredictorHandle predictor_handle) {
+void TenorRTPredictor_Run(PredictorHandle predictor_handle)
+{
   START_C_DEFINION();
   auto predictor = get_predictor_from_handle(predictor_handle);
   predictor->Run();
   END_C_DEFINION();
 }
 
-int TenorRTPredictor_GetNumOutputs(PredictorHandle predictor_handle) {
+int TenorRTPredictor_GetNumOutputs(PredictorHandle predictor_handle)
+{
   START_C_DEFINION();
   auto predictor = get_predictor_from_handle(predictor_handle);
   return predictor->output_layer_names_.size();
@@ -416,7 +463,8 @@ int TenorRTPredictor_GetNumOutputs(PredictorHandle predictor_handle) {
 
 void *TenorRTPredictor_GetOutput(PredictorHandle predictor_handle,
                                  const char *name, int32_t *ndims,
-                                 int32_t **res_dims) {
+                                 int32_t **res_dims)
+{
   START_C_DEFINION();
   auto predictor = get_predictor_from_handle(predictor_handle);
 
@@ -435,58 +483,73 @@ void *TenorRTPredictor_GetOutput(PredictorHandle predictor_handle,
   END_C_DEFINION(nullptr);
 }
 
-bool TenorRTPredictor_HasError(PredictorHandle predictor_handle) {
+bool TenorRTPredictor_HasError(PredictorHandle predictor_handle)
+{
   return has_error;
 }
 
-const char *TenorRTPredictor_GetLastError(PredictorHandle predictor_handle) {
+const char *TenorRTPredictor_GetLastError(PredictorHandle predictor_handle)
+{
   return error_string.c_str();
 }
 
-void TenorRTPredictor_Delete(PredictorHandle predictor_handle) {
+void TenorRTPredictor_Delete(PredictorHandle predictor_handle)
+{
   START_C_DEFINION();
   auto predictor = get_predictor_from_handle(predictor_handle);
-  if (predictor != nullptr) {
+  if (predictor != nullptr)
+  {
     delete predictor;
   }
   END_C_DEFINION();
 }
 
 void TenorRTPredictor_StartProfiling(PredictorHandle predictor_handle,
-                                     const char *name, const char *metadata) {
+                                     const char *name, const char *metadata)
+{
 
   START_C_DEFINION();
   auto predictor = get_predictor_from_handle(predictor_handle);
-  if (name == nullptr) {
+  if (name == nullptr)
+  {
     name = "";
   }
-  if (metadata == nullptr) {
+  if (metadata == nullptr)
+  {
     metadata = "";
   }
-  if (predictor->prof_ == nullptr) {
+  if (predictor->prof_ == nullptr)
+  {
     predictor->prof_ = new profile(name, metadata);
-  } else {
+  }
+  else
+  {
     predictor->prof_->reset();
   }
   END_C_DEFINION();
 }
 
-void TenorRTPredictor_EndProfiling(PredictorHandle pred) {
+void TenorRTPredictor_EndProfiling(PredictorHandle pred)
+{
   START_C_DEFINION();
   auto predictor = get_predictor_from_handle(pred);
-  if (predictor->prof_) {
+  if (predictor->prof_)
+  {
     predictor->prof_->end();
   }
   END_C_DEFINION();
 }
 
-char *TenorRTPredictor_ReadProfiling(PredictorHandle pred) {
+char *TenorRTPredictor_ReadProfiling(PredictorHandle pred)
+{
   START_C_DEFINION();
   auto predictor = (Predictor *)pred;
-  if (predictor == nullptr) {
+  if (predictor == nullptr)
+  {
     return strdup("");
   }
-  if (predictor->prof_ == nullptr) {
+  if (predictor->prof_ == nullptr)
+  {
     return strdup("");
   }
   const auto s = predictor->prof_->read();
