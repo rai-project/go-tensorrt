@@ -10,7 +10,6 @@ import (
 	"sort"
 
 	"github.com/Unknwon/com"
-
 	"github.com/anthonynsimon/bild/imgio"
 	"github.com/anthonynsimon/bild/transform"
 	"github.com/k0kubun/pp"
@@ -24,28 +23,21 @@ import (
 	nvidiasmi "github.com/rai-project/nvidia-smi"
 	"github.com/rai-project/tracer"
 	_ "github.com/rai-project/tracer/all"
-
 	"github.com/rai-project/tracer/ctimer"
 	gotensor "gorgonia.org/tensor"
 )
 
 var (
 	batchSize   = 1
-	model       = "bvlc_alexnet"
-	shape       = []int{1, 3, 227, 227}
-	mean        = []float32{123, 117, 104}
+	model       = "resnet50"
+	shape       = []int{1, 3, 224, 224}
+	mean        = []float32{123.68, 116.779, 103.939}
 	scale       = []float32{1.0, 1.0, 1.0}
 	imgDir, _   = filepath.Abs("../_fixtures")
 	imgPath     = filepath.Join(imgDir, "platypus.jpg")
-	graph_url   = "https://raw.githubusercontent.com/BVLC/caffe/master/models/bvlc_alexnet/deploy.prototxt"
-	weights_url = "http://dl.caffe.berkeleyvision.org/bvlc_alexnet.caffemodel"
-	synset_url  = "http://s3.amazonaws.com/store.carml.org/synsets/imagenet/synset.txt"
-
-	baseDir, _ = filepath.Abs("../tmp")
-	dir        = filepath.Join(baseDir, model)
-	graph      = filepath.Join(dir, "deploy.prototxt")
-	weights    = filepath.Join(dir, model+".caffemodel")
-	synset     = filepath.Join(dir, "synset.txt")
+	graph_url   = "http://s3.amazonaws.com/store.carml.org/models/caffe/resnet50/ResNet-50-deploy.prototxt"
+	weights_url = "http://s3.amazonaws.com/store.carml.org/models/caffe/resnet50/ResNet-50-model.caffemodel"
+	synset_url  = "http://s3.amazonaws.com/store.carml.org/synsets/imagenet/synset1001.txt"
 )
 
 // convert go Image to 1-dim array
@@ -62,9 +54,9 @@ func cvtRGBImageToNCHW1DArray(src image.Image, mean []float32, scale []float32) 
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			r, g, b, _ := src.At(x+in.Min.X, y+in.Min.Y).RGBA()
-			out[y*width+x] = (float32(r) - mean[2]) / scale[2]
+			out[y*width+x] = (float32(b) - mean[2]) / scale[2]
 			out[width*height+y*width+x] = (float32(g) - mean[1]) / scale[1]
-			out[2*width*height+y*width+x] = (float32(b) - mean[0]) / scale[0]
+			out[2*width*height+y*width+x] = (float32(r) - mean[0]) / scale[0]
 		}
 	}
 
@@ -72,20 +64,26 @@ func cvtRGBImageToNCHW1DArray(src image.Image, mean []float32, scale []float32) 
 }
 
 func main() {
-	defer tracer.Close()
+  defer tracer.Close()
+  
+	baseDir, _ := filepath.Abs("../tmp")
+	dir := filepath.Join(baseDir, model)
+	graph := filepath.Join(dir, model+".prototxt")
+	weights := filepath.Join(dir, model+".caffemodel")
+	synset := filepath.Join(dir, "synset.txt")
 
 	if !com.IsFile(graph) {
-		if _, err := downloadmanager.DownloadInto(graph_url, dir); err != nil {
+		if _, _, err := downloadmanager.DownloadFile(graph_url, graph); err != nil {
 			panic(err)
 		}
 	}
 	if !com.IsFile(weights) {
-		if _, err := downloadmanager.DownloadInto(weights_url, dir); err != nil {
+		if _, _, err := downloadmanager.DownloadFile(weights_url, weights); err != nil {
 			panic(err)
 		}
 	}
 	if !com.IsFile(synset) {
-		if _, err := downloadmanager.DownloadInto(synset_url, dir); err != nil {
+		if _, _, err := downloadmanager.DownloadFile(synset_url, synset); err != nil {
 			panic(err)
 		}
 	}
@@ -174,61 +172,64 @@ func main() {
 		cu.Close()
 	}
 
-	profBuffer, err := predictor.ReadProfile()
-	if err != nil {
-		panic(err)
-	}
-
-	t, err := ctimer.New(profBuffer)
-	if err != nil {
-		panic(err)
-	}
-	t.Publish(ctx, tracer.FRAMEWORK_TRACE)
-
-	outputs, err := predictor.ReadPredictionOutputs(ctx)
-	if err != nil {
-		panic(err)
-	}
-
-	output := outputs[0]
-
-	var labels []string
-	f, err := os.Open(synset)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := scanner.Text()
-		labels = append(labels, line)
-	}
-
-	features := make([]dlframework.Features, batchSize)
-	featuresLen := len(output) / batchSize
-
-	for ii := 0; ii < batchSize; ii++ {
-		rprobs := make([]*dlframework.Feature, featuresLen)
-		for jj := 0; jj < featuresLen; jj++ {
-			rprobs[jj] = feature.New(
-				feature.ClassificationIndex(int32(jj)),
-				feature.ClassificationLabel(labels[jj]),
-				feature.Probability(output[ii*featuresLen+jj]),
-			)
-		}
-		sort.Sort(dlframework.Features(rprobs))
-		features[ii] = rprobs
-	}
-
 	if true {
-		for i := 0; i < 1; i++ {
-			results := features[i]
-			top1 := results[0]
-			pp.Println(top1.Probability)
-			pp.Println(top1.GetClassification().GetLabel())
+		profBuffer, err := predictor.ReadProfile()
+		if err != nil {
+			panic(err)
 		}
-	} else {
-		_ = features
+
+		t, err := ctimer.New(profBuffer)
+		if err != nil {
+			panic(err)
+		}
+		t.Publish(ctx, tracer.FRAMEWORK_TRACE)
+
+		outputs, err := predictor.ReadPredictionOutputs(ctx)
+		if err != nil {
+			panic(err)
+		}
+
+		output := outputs[0]
+
+		var labels []string
+		f, err := os.Open(synset)
+		if err != nil {
+			panic(err)
+		}
+		defer f.Close()
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			line := scanner.Text()
+			labels = append(labels, line)
+		}
+
+		features := make([]dlframework.Features, batchSize)
+		featuresLen := len(output) / batchSize
+
+		for ii := 0; ii < batchSize; ii++ {
+			rprobs := make([]*dlframework.Feature, featuresLen)
+			for jj := 0; jj < featuresLen; jj++ {
+				rprobs[jj] = feature.New(
+					feature.ClassificationIndex(int32(jj)),
+					feature.ClassificationLabel(labels[jj]),
+					feature.Probability(output[ii*featuresLen+jj]),
+				)
+			}
+			sort.Sort(dlframework.Features(rprobs))
+			features[ii] = rprobs
+		}
+
+		if true {
+			results := features[0]
+			for i := 0; i < 3; i++ {
+				prediction := results[i]
+				pp.Println(prediction.Probability)
+				pp.Println(prediction.GetClassification().GetIndex())
+				pp.Println(prediction.GetClassification().GetLabel())
+			}
+		} else {
+			_ = features
+		}
 	}
 }
 
