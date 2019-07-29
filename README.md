@@ -7,7 +7,7 @@
 [![](https://images.microbadger.com/badges/version/carml/go-tensorrt:amd64-gpu-latest.svg)](https://microbadger.com/images/carml/go-tensorrt:amd64-gpu-latest 'Get your own version badge on microbadger.com')
 
 Go binding for TensorRT C predict API.
-This is used by the [TensorRT agent](https://github.com/rai-project/mxnet) in [MLModelScope](mlmodelscope.org) to perform model inference in Go.
+This is used by the [TensorRT agent](https://github.com/rai-project/tensorrt) in [MLModelScope](mlmodelscope.org) to perform model inference in Go.
 
 ## Installation
 
