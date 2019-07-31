@@ -33,8 +33,13 @@ RUN dpkg -i /tmp/tensorrt.deb && \
 ENV PKG github.com/rai-project/go-tensorrt
 WORKDIR $GOPATH/src/$PKG
 
-RUN git clone --depth=1 --branch=master https://${PKG}.git . && \
-  dep ensure -v -vendor-only && \
-  go build -a -installsuffix cgo -ldflags "-s -w -X ${PKG}/Version=${VERSION} -X ${PKG}/GitCommit=${VCS_REF} -X ${PKG}/BuildDate=${BUILD_DATE}"&& \
+RUN git clone --depth=1 --branch=master https://${PKG}.git .
+
+RUN dep ensure -v -no-vendor -update \
+    github.com/rai-project/go-tensorrt \
+    github.com/rai-project/dlframework && \
+    dep ensure -v -vendor-only
+
+RUN go build -a -installsuffix cgo -ldflags "-s -w -X ${PKG}/Version=${VERSION} -X ${PKG}/GitCommit=${VCS_REF} -X ${PKG}/BuildDate=${BUILD_DATE}"&& \
   go install && \
   rm -fr vendor
