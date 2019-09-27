@@ -144,12 +144,14 @@ func main() {
 	}
 	defer predictor.Close()
 
+	for ii:=0; ii < 3; ii++ {
 	err = predictor.Predict(ctx, input)
 	if err != nil {
 		panic(err)
 	}
+}
 
-	enableCupti := false
+	enableCupti := true 
 	var cu *cupti.CUPTI
 	if enableCupti {
 		cu, err = cupti.New(cupti.Context(ctx))
