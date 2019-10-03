@@ -142,6 +142,10 @@ public:
     const ICudaEngine &engine = context_->getEngine();
     data_.resize(engine.getNbBindings());
   };
+<<<<<<< HEAD
+=======
+
+>>>>>>> dc10d662957b14690a4a3be236b8459a23e0ce2d
   void Run()
   {
     if (context_ == nullptr)
@@ -162,8 +166,10 @@ public:
     // Set the custom profiler.
     context_->setProfiler(&profiler);
 
-    context_->enqueue(batch_size_, data_.data(), stream_, nullptr);
+    context_->execute(batch_size_, data_.data());
+    // context_->enqueue(batch_size_, data_.data(), stream_, nullptr);
   }
+
   template <typename T>
   void AddInput(const std::string &name, const T *host_data,
                 size_t num_elements)
@@ -183,7 +189,11 @@ public:
   }
 
   template <typename T>
+<<<<<<< HEAD
   void AddOutput(const std::string &name, size_t num_elements)
+=======
+  void AddOutput(const std::string &name)
+>>>>>>> dc10d662957b14690a4a3be236b8459a23e0ce2d
   {
     void *gpu_data = nullptr;
     const ICudaEngine &engine = context_->getEngine();
@@ -191,6 +201,14 @@ public:
     if (idx == -1)
     {
       throw std::runtime_error(std::string("invalid output name ") + name);
+    }
+    const auto dims = engine.getBindingDimensions(idx);
+    const auto ndims = dims.nbDims;
+    auto num_elements = 1;
+    std::vector<int> res{};
+    for (int ii = 0; ii < ndims; ii++)
+    {
+      num_elements *= dims.d[ii];
     }
     const auto byte_count = batch_size_ * num_elements * sizeof(T);
     CHECK_ERROR(cudaMalloc(&gpu_data, byte_count));
@@ -335,6 +353,8 @@ NewTensorRTPredictor(TensorRT_ModelFormat model_format, char *deploy_file,
     throw std::runtime_error(err);
   }
 
+  // builder->setDebugSync(true);
+
   // Parse the caffe model to populate the network, then set the outputs
   INetworkDefinition *network = builder->createNetwork();
   ICaffeParser *parser = createCaffeParser();
@@ -437,6 +457,28 @@ void TenorRTPredictor_AddInput(PredictorHandle predictor_handle,
   END_C_DEFINION();
 }
 
+<<<<<<< HEAD
+=======
+void TenorRTPredictor_AddOutput(PredictorHandle predictor_handle,
+                                const char *name, TensorRT_DType dtype)
+{
+  START_C_DEFINION();
+  auto predictor = get_predictor_from_handle(predictor_handle);
+  switch (dtype)
+  {
+#define DISPATCH_ADD_OUTPUT(DType, CType) \
+  case DType:                             \
+    predictor->AddOutput<CType>(name);    \
+    break;
+    TensorRT_DType_Dispatch(DISPATCH_ADD_OUTPUT);
+#undef DISPATCH_ADD_OUTPUT
+  default:
+    throw std::runtime_error("unexpected input type");
+  }
+  END_C_DEFINION();
+}
+
+>>>>>>> dc10d662957b14690a4a3be236b8459a23e0ce2d
 void TenorRTPredictor_Synchronize(PredictorHandle predictor_handle)
 {
   START_C_DEFINION();

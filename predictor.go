@@ -122,18 +122,31 @@ func (p *Predictor) Predict(ctx context.Context, data []float32) error {
 		return fmt.Errorf("intput data nil or empty")
 	}
 
-	cname := C.CString(p.inputNodes[0].Key)
-	defer C.free(unsafe.Pointer(cname))
+	cnamei := C.CString(p.inputNodes[0].Key)
+	defer C.free(unsafe.Pointer(cnamei))
 
-	span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_predict")
+  cnameo := C.CString(p.outputNodes[0].Key)
+	defer C.free(unsafe.Pointer(cnameo))
+
+
+  span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_predict")
+  defer span.Finish()
+
 	C.TenorRTPredictor_AddInput(
 		p.handle,
-		cname,
+		cnamei,
 		C.TensorRT_DType(Float),
 		unsafe.Pointer(&data[0]),
 		C.size_t(len(data)),
 	)
-	span.Finish()
+  
+  C.TenorRTPredictor_AddOutput(
+    p.handle,
+    cnameo,
+    C.TensorRT_DType(Float),
+  )
+
+  C.TenorRTPredictor_Run(p.handle)
 
 	return nil
 }
@@ -170,7 +183,6 @@ func (p *Predictor) ReadPredictionOutput(name string) []float32 {
 
 	data := C.TenorRTPredictor_GetOutput(p.handle, cname, (*C.int32_t)(&ndims), (**C.int32_t)(&cdims))
 
-  pp.Println(ndims)
 	dims := (*[1 << 30]C.int32_t)(unsafe.Pointer(cdims))[:ndims:ndims]
 
 	sz := 1
@@ -178,8 +190,6 @@ func (p *Predictor) ReadPredictionOutput(name string) []float32 {
 		sz *= int(dims[ii])
   }
   
-  pp.Println(sz)
-
 	return (*[1 << 30]float32)(unsafe.Pointer(data))[:sz:sz]
 }
 
