@@ -2,6 +2,7 @@ build/*
 networks/*
 *.o
 *.so
+_fixtures
 
 tmp
 tensorrt

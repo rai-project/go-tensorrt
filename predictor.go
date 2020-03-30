@@ -34,13 +34,25 @@ func New(ctx context.Context, opts ...options.Option) (*Predictor, error) {
 	defer span.Finish()
 
 	options := options.New(opts...)
+
+	var modelFiles []*C.char
 	modelFile := string(options.Graph())
 	if !com.IsFile(modelFile) {
 		return nil, errors.Errorf("file %s not found", modelFile)
 	}
-	weightsFile := string(options.Weights())
-	if !com.IsFile(weightsFile) {
-		return nil, errors.Errorf("file %s not found", weightsFile)
+	modelFileString := C.CString(modelFile)
+	defer C.free(unsafe.Pointer(modelFileString))
+	modelFiles = append(modelFiles, modelFileString)
+
+	format := ClassifyModelFormat(modelFile)
+	if format == ModelFormatCaffe {
+		weightsFile := string(options.Weights())
+		if !com.IsFile(weightsFile) {
+			return nil, errors.Errorf("file %s not found", weightsFile)
+		}
+		weightsFileString := C.CString(weightsFile)
+		defer C.free(unsafe.Pointer(weightsFileString))
+		modelFiles = append(modelFiles, weightsFileString)
 	}
 
 	if len(options.InputNodes()) == 0 {
@@ -49,12 +61,6 @@ func New(ctx context.Context, opts ...options.Option) (*Predictor, error) {
 	if len(options.OutputNodes()) == 0 {
 		return nil, errors.Errorf("output nodes not found")
 	}
-
-	modelFileString := C.CString(modelFile)
-	defer C.free(unsafe.Pointer(modelFileString))
-
-	weightsFileString := C.CString(weightsFile)
-	defer C.free(unsafe.Pointer(weightsFileString))
 
 	inputNodes := options.InputNodes() // take the first input node
 	for _, n := range inputNodes {
@@ -73,14 +79,12 @@ func New(ctx context.Context, opts ...options.Option) (*Predictor, error) {
 		}
 	}
 
-
 	cOutputNodes := makeCStringArray(outputNodes)
 	defer deleteCStringArray(cOutputNodes)
 
 	handle := C.NewTensorRTPredictor(
 		C.TensorRT_ModelFormat(ModelFormatCaffe),
-		modelFileString,
-		weightsFileString,
+		(**C.char)(&modelFiles[0]),
 		C.TensorRT_DType(Float),
 		(**C.char)(&cInputNodes[0]),
 		C.int32_t(len(inputNodes)),
@@ -125,12 +129,11 @@ func (p *Predictor) Predict(ctx context.Context, data []float32) error {
 	cnamei := C.CString(p.inputNodes[0].Key)
 	defer C.free(unsafe.Pointer(cnamei))
 
-  cnameo := C.CString(p.outputNodes[0].Key)
+	cnameo := C.CString(p.outputNodes[0].Key)
 	defer C.free(unsafe.Pointer(cnameo))
 
-
-  span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_predict")
-  defer span.Finish()
+	span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_predict")
+	defer span.Finish()
 
 	C.TenorRTPredictor_AddInput(
 		p.handle,
@@ -139,15 +142,15 @@ func (p *Predictor) Predict(ctx context.Context, data []float32) error {
 		unsafe.Pointer(&data[0]),
 		C.size_t(len(data)),
 	)
-  
-  C.TenorRTPredictor_AddOutput(
-    p.handle,
-    cnameo,
-    C.TensorRT_DType(Float),
-  )
 
-  C.TenorRTPredictor_Run(p.handle)
+	C.TenorRTPredictor_AddOutput(
+		p.handle,
+		cnameo,
+		C.TensorRT_DType(Float),
+	)
 
+	C.TenorRTPredictor_Run(p.handle)
+	C.TenorRTPredictor_Synchronize(p.handle)
 	return nil
 }
 
@@ -188,8 +191,8 @@ func (p *Predictor) ReadPredictionOutput(name string) []float32 {
 	sz := 1
 	for ii := 0; ii < int(ndims); ii++ {
 		sz *= int(dims[ii])
-  }
-  
+	}
+
 	return (*[1 << 30]float32)(unsafe.Pointer(data))[:sz:sz]
 }
 
@@ -225,6 +228,6 @@ func (p *Predictor) ReadProfile() (string, error) {
 	return C.GoString(cstr), nil
 }
 
-func dummyPP( ) {
+func dummyPP() {
 	pp.Println("dummy")
 }
