@@ -24,7 +24,7 @@ extern "C"
   {
     TensorRT_CaffeFormat = 1,
     TensorRT_OnnxFormat = 2,
-    TensorRT_TensorFlowFormat = 3
+    TensorRT_UffFormat = 3,
   } TensorRT_ModelFormat;
 
   typedef enum TensorRT_DType
@@ -63,8 +63,9 @@ extern "C"
   X(TensorRT_Double, double)
 
   PredictorHandle
-  NewTensorRTPredictor(TensorRT_ModelFormat model_format, char *deploy_file,
-                       char *weights_file, TensorRT_DType model_datatype,
+  NewTensorRTPredictor(TensorRT_ModelFormat model_format, 
+                       char **model_files,
+                       TensorRT_DType model_datatype,
                        char **input_layer_names, int32_t num_input_layer_names,
                        char **output_layer_names, int32_t num_output_layer_names,
                        int32_t batch_size);

@@ -6,8 +6,12 @@
 #include <cuda_runtime_api.h>
 
 #include "NvCaffeParser.h"
+// #include "parserOnnxConfig.h"
+#include "NvUffParser.h"
 #include "NvInfer.h"
-#include <NvInferPlugin.h>
+#include "NvInferPlugin.h"
+#include "NvOnnxConfig.h"
+#include "NvOnnxParser.h"
 
 #include "json.hpp"
 #include "predictor.hpp"
@@ -19,7 +23,9 @@
 using namespace std;
 using namespace nvinfer1;
 using namespace nvinfer1;
+using namespace nvonnxparser;
 using namespace nvcaffeparser1;
+using namespace nvuffparser;
 using std::string;
 
 using json = nlohmann::json;
@@ -62,7 +68,7 @@ static void set_error(const std::string &err) {
 class Logger : public ILogger {
   void log(Severity severity, const char *msg) override {
     // suppress info-level messages
-    if (severity != Severity::kINFO) {
+    if (severity < Severity::kWARNING) {
       std::cout << msg << std::endl;
     }
   }
@@ -126,10 +132,6 @@ public:
     const ICudaEngine &engine = context_->getEngine();
     data_.resize(engine.getNbBindings());
   };
-<<<<<<< HEAD
-=======
-
->>>>>>> dc10d662957b14690a4a3be236b8459a23e0ce2d
   void Run() {
     if (context_ == nullptr) {
       throw std::runtime_error("tensorrt prediction error  null context_");
@@ -168,11 +170,7 @@ public:
   }
 
   template <typename T>
-<<<<<<< HEAD
-  void AddOutput(const std::string &name, size_t num_elements)
-=======
   void AddOutput(const std::string &name)
->>>>>>> dc10d662957b14690a4a3be236b8459a23e0ce2d
   {
     void *gpu_data = nullptr;
     const ICudaEngine &engine = context_->getEngine();
@@ -299,8 +297,9 @@ Predictor *get_predictor_from_handle(PredictorHandle predictor_handle) {
 }
 
 PredictorHandle
-NewTensorRTPredictor(TensorRT_ModelFormat model_format, char *deploy_file,
-                     char *weights_file, TensorRT_DType model_datatype,
+NewTensorRTPredictor(TensorRT_ModelFormat model_format, 
+                     char **model_files,
+                     TensorRT_DType model_datatype,
                      char **input_layer_names, int32_t num_input_layer_names,
                      char **output_layer_names, int32_t num_output_layer_names,
                      int32_t batch_size) {
@@ -311,21 +310,12 @@ NewTensorRTPredictor(TensorRT_ModelFormat model_format, char *deploy_file,
   IBuilder *builder = createInferBuilder(gLogger);
   if (builder == nullptr) {
     std::string err =
-        std::string("cannot create tensorrt builder for ") + deploy_file;
+        std::string("cannot create tensorrt builder for ") + model_files[1];
     throw std::runtime_error(err);
   }
-
-  // builder->setDebugSync(true);
-
-  // Parse the caffe model to populate the network, then set the outputs
+  IBuilderConfig* builder_config = builder->createBuilderConfig();
   INetworkDefinition *network = builder->createNetwork();
-  ICaffeParser *parser = createCaffeParser();
-  assert(model_format == TensorRT_CaffeFormat);
-  if (parser == nullptr) {
-    std::string err =
-        std::string("cannot create tensorrt paser for ") + deploy_file;
-    throw std::runtime_error(err);
-  }
+  // builder->setDebugSync(true);
 
   DataType blob_data_type = DataType::kFLOAT;
   switch (model_datatype) {
@@ -347,30 +337,56 @@ NewTensorRTPredictor(TensorRT_ModelFormat model_format, char *deploy_file,
   default:
     throw std::runtime_error("invalid model datatype");
   }
-  const IBlobNameToTensor *blobNameToTensor =
-      parser->parse(deploy_file, weights_file, *network, blob_data_type);
 
+  // Parse the caffe model to populate the network, then set the outputs
+  // Create the parser according to the specified model format.
   std::vector<std::string> input_layer_names_vec{};
   for (int ii = 0; ii < num_input_layer_names; ii++) {
-    input_layer_names_vec.emplace_back(input_layer_names[ii]);
-  }
+        input_layer_names_vec.emplace_back(input_layer_names[ii]);
+      }
   std::vector<std::string> output_layer_names_vec{};
   for (int ii = 0; ii < num_output_layer_names; ii++) {
     output_layer_names_vec.emplace_back(output_layer_names[ii]);
-    network->markOutput(*blobNameToTensor->find(output_layer_names[ii]));
+  }
+
+  if (model_format == TensorRT_CaffeFormat) {
+      auto parser = nvcaffeparser1::createCaffeParser();
+      if (parser == nullptr) {
+        std::string err =
+            std::string("cannot create tensorrt caffe parser for ") + model_files[1];
+        throw std::runtime_error(err);
+      }
+
+      const IBlobNameToTensor *blobNameToTensor =
+      parser->parse(model_files[0], model_files[1], *network, blob_data_type);
+
+
+      for (int ii = 0; ii < num_output_layer_names; ii++) {
+        network->markOutput(*blobNameToTensor->find(output_layer_names[ii]));
+      }
+  } else if (model_format == TensorRT_OnnxFormat) {
+      auto parser = nvonnxparser::createParser(network, gLogger);
+  } else if (model_format == TensorRT_UffFormat) {
+      auto parser = nvuffparser::createUffParser();
+  } else {
+      throw std::runtime_error("model format is not recognized");
   }
 
   builder->setMaxBatchSize(batch_size);
-  builder->setMaxWorkspaceSize(36 << 20);
-  builder->allowGPUFallback(true);
+  builder_config->setMaxWorkspaceSize(36 << 20);
+  builder_config->setFlag(BuilderFlag::kGPU_FALLBACK);
 
-  builder->setInt8Mode(blob_data_type == DataType::kINT8);
-  builder->setFp16Mode(blob_data_type == DataType::kHALF);
+  if (blob_data_type == DataType::kINT8) {
+    builder_config->setFlag(BuilderFlag::kINT8);
+  }
+  if (blob_data_type == DataType::kHALF) {
+    builder_config->setFlag(BuilderFlag::kFP16);
+  }
 
   ICudaEngine *engine = builder->buildCudaEngine(*network);
 
   network->destroy();
-  parser->destroy();
+  // parser->destroy();
 
   IHostMemory *trtModelStream = engine->serialize();
 
