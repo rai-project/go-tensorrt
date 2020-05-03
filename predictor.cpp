@@ -7,11 +7,11 @@
 
 #include "NvCaffeParser.h"
 // #include "parserOnnxConfig.h"
-#include "NvUffParser.h"
 #include "NvInfer.h"
 #include "NvInferPlugin.h"
 #include "NvOnnxConfig.h"
 #include "NvOnnxParser.h"
+#include "NvUffParser.h"
 
 #include "json.hpp"
 #include "predictor.hpp"
@@ -27,8 +27,9 @@ using namespace nvonnxparser;
 using namespace nvcaffeparser1;
 using namespace nvuffparser;
 using std::string;
-
 using json = nlohmann::json;
+
+#define DEBUG 0
 
 static bool has_error = false;
 static std::string error_string{""};
@@ -169,9 +170,7 @@ public:
     data_[idx] = gpu_data;
   }
 
-  template <typename T>
-  void AddOutput(const std::string &name)
-  {
+  template <typename T> void AddOutput(const std::string &name) {
     void *gpu_data = nullptr;
     const ICudaEngine &engine = context_->getEngine();
     const auto idx = engine.getBindingIndex(name.c_str());
@@ -249,17 +248,23 @@ public:
 
     const auto dims = engine.getBindingDimensions(idx);
     const auto ndims = dims.nbDims;
+#ifdef DEBUG
     std::cout << __LINE__ << "  >>> "
               << "name = " << name << "\n";
     std::cout << __LINE__ << "  >>> "
               << "ndims = " << ndims << "\n";
+#endif
     std::vector<int> res{};
     for (int ii = 0; ii < ndims; ii++) {
+#ifdef DEBUG
       std::cout << __LINE__ << "  >>> " << ii << "  ==  " << dims.d[ii] << "\n";
+#endif
       res.emplace_back(dims.d[ii]);
     }
+#ifdef DEBUG
     std::cout << __LINE__ << "  >>> "
               << "res.size() = " << res.size() << "\n";
+#endif
     return res;
   }
 
@@ -297,12 +302,10 @@ Predictor *get_predictor_from_handle(PredictorHandle predictor_handle) {
 }
 
 PredictorHandle
-NewTensorRTPredictor(TensorRT_ModelFormat model_format, 
-                     char **model_files,
-                     TensorRT_DType model_datatype,
-                     char **input_layer_names, int32_t num_input_layer_names,
-                     char **output_layer_names, int32_t num_output_layer_names,
-                     int32_t batch_size) {
+NewTensorRTPredictor(TensorRT_ModelFormat model_format, char **model_files,
+                     TensorRT_DType model_datatype, char **input_layer_names,
+                     int32_t num_input_layer_names, char **output_layer_names,
+                     int32_t num_output_layer_names, int32_t batch_size) {
 
   START_C_DEFINION();
 
@@ -313,9 +316,16 @@ NewTensorRTPredictor(TensorRT_ModelFormat model_format,
         std::string("cannot create tensorrt builder for ") + model_files[1];
     throw std::runtime_error(err);
   }
-  IBuilderConfig* builder_config = builder->createBuilderConfig();
-  INetworkDefinition *network = builder->createNetwork();
-  // builder->setDebugSync(true);
+
+  const bool isOnnxModel =
+      model_format == TensorRT_ModelFormat::TensorRT_OnnxFormat;
+  auto batchFlag =
+      (batch_size && !isOnnxModel)
+          ? 0U
+          : 1U << static_cast<uint32_t>(
+                nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
+
+  INetworkDefinition *network = builder->createNetworkV2(batchFlag);
 
   DataType blob_data_type = DataType::kFLOAT;
   switch (model_datatype) {
@@ -339,40 +349,41 @@ NewTensorRTPredictor(TensorRT_ModelFormat model_format,
   }
 
   // Parse the caffe model to populate the network, then set the outputs
-  // Create the parser according to the specified model format.
+  // Create the parser according to the specified model format
   std::vector<std::string> input_layer_names_vec{};
   for (int ii = 0; ii < num_input_layer_names; ii++) {
-        input_layer_names_vec.emplace_back(input_layer_names[ii]);
-      }
+    input_layer_names_vec.emplace_back(input_layer_names[ii]);
+  }
   std::vector<std::string> output_layer_names_vec{};
   for (int ii = 0; ii < num_output_layer_names; ii++) {
     output_layer_names_vec.emplace_back(output_layer_names[ii]);
   }
 
   if (model_format == TensorRT_CaffeFormat) {
-      auto parser = nvcaffeparser1::createCaffeParser();
-      if (parser == nullptr) {
-        std::string err =
-            std::string("cannot create tensorrt caffe parser for ") + model_files[1];
-        throw std::runtime_error(err);
-      }
+    auto parser = nvcaffeparser1::createCaffeParser();
+    if (parser == nullptr) {
+      std::string err =
+          std::string("cannot create tensorrt caffe parser for ") +
+          model_files[1];
+      throw std::runtime_error(err);
+    }
 
-      const IBlobNameToTensor *blobNameToTensor =
-      parser->parse(model_files[0], model_files[1], *network, blob_data_type);
+    const IBlobNameToTensor *blobNameToTensor =
+        parser->parse(model_files[0], model_files[1], *network, blob_data_type);
 
-
-      for (int ii = 0; ii < num_output_layer_names; ii++) {
-        network->markOutput(*blobNameToTensor->find(output_layer_names[ii]));
-      }
+    for (int ii = 0; ii < num_output_layer_names; ii++) {
+      network->markOutput(*blobNameToTensor->find(output_layer_names[ii]));
+    }
   } else if (model_format == TensorRT_OnnxFormat) {
-      auto parser = nvonnxparser::createParser(network, gLogger);
+    // auto parser = nvonnxparser::createParser(*network, gLogger);
   } else if (model_format == TensorRT_UffFormat) {
-      auto parser = nvuffparser::createUffParser();
+    // auto parser = nvuffparser::createUffParser();
   } else {
-      throw std::runtime_error("model format is not recognized");
+    throw std::runtime_error("model format is not recognized");
   }
 
   builder->setMaxBatchSize(batch_size);
+  IBuilderConfig *builder_config = builder->createBuilderConfig();
   builder_config->setMaxWorkspaceSize(36 << 20);
   builder_config->setFlag(BuilderFlag::kGPU_FALLBACK);
 
@@ -383,10 +394,10 @@ NewTensorRTPredictor(TensorRT_ModelFormat model_format,
     builder_config->setFlag(BuilderFlag::kFP16);
   }
 
-  ICudaEngine *engine = builder->buildCudaEngine(*network);
+  ICudaEngine *engine =
+      builder->buildEngineWithConfig(*network, *builder_config);
 
   network->destroy();
-  // parser->destroy();
 
   IHostMemory *trtModelStream = engine->serialize();
 
@@ -394,6 +405,7 @@ NewTensorRTPredictor(TensorRT_ModelFormat model_format,
   builder->destroy();
 
   IRuntime *runtime = createInferRuntime(gLogger);
+
   // Deserialize the engine
   ICudaEngine *runtime_engine = runtime->deserializeCudaEngine(
       trtModelStream->data(), trtModelStream->size(), nullptr);
@@ -473,15 +485,13 @@ void *TenorRTPredictor_GetOutput(PredictorHandle predictor_handle,
   START_C_DEFINION();
   auto predictor = get_predictor_from_handle(predictor_handle);
 
-  std::cout << __LINE__ << "  >>> \n";
   auto dims = predictor->GetOutputShape(name);
-  std::cout << __LINE__ << "  >>> \n";
   void *data = predictor->GetOutputData(name);
   *ndims = dims.size();
-
+#ifdef DEBUG
   std::cout << __LINE__ << "  >>> "
             << "*ndims = " << *ndims << "\n";
-
+#endif
   *res_dims = (int32_t *)malloc(sizeof(int32_t) * (*ndims));
   memcpy(*res_dims, dims.data(), sizeof(int32_t) * (*ndims));
   return data;

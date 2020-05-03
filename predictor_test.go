@@ -37,12 +37,12 @@ var (
 	mean                 = []float32{123.68, 116.779, 103.939}
 	scale                = []float32{1.0, 1.0, 1.0}
 	thisDir              = sourcepath.MustAbsoluteDir()
-	imgPath              = filepath.Join(thisDir, "_fixtures", "platypus.jpg")
-	labelFilePath        = filepath.Join(thisDir, "_fixtures", "resnet50", "synset.txt")
-	caffeGraphFilePath   = filepath.Join(thisDir, "_fixtures", "resnet50", "resnet50.prototxt")
-	caffeWeightsFilePath = filepath.Join(thisDir, "_fixtures", "resnet50", "resnet50.caffemodel")
-	onnxModelPath        = filepath.Join(thisDir, "_fixtures", "ResNet50.onnx")
-	uffModelPath         = filepath.Join(thisDir, "_fixtures", "resnet50-infer-5.uff")
+	imgPath              = filepath.Join(thisDir, "examples", "_fixtures", "platypus.jpg")
+	labelFilePath        = filepath.Join(thisDir, "examples", "_fixtures", "resnet50", "synset.txt")
+	caffeGraphFilePath   = filepath.Join(thisDir, "examples", "_fixtures", "resnet50", "resnet50.prototxt")
+	caffeWeightsFilePath = filepath.Join(thisDir, "examples", "_fixtures", "resnet50", "resnet50.caffemodel")
+	onnxModelPath        = filepath.Join(thisDir, "examples", "_fixtures", "ResNet50.onnx")
+	uffModelPath         = filepath.Join(thisDir, "examples", "_fixtures", "resnet50-infer-5.uff")
 )
 
 // convert go RGB Image to 1D normalized RGB array
@@ -116,7 +116,6 @@ func TestTensorRTCaffe(t *testing.T) {
 		options.InputNodes([]options.Node{in}),
 		options.OutputNodes([]options.Node{out}),
 	)
-	fmt.Println("here here here here here")
 	if err != nil {
 		t.Errorf("TensorRT predictor initiation failed %v", err)
 	}
