@@ -14,9 +14,8 @@ import (
 	"runtime"
 	"unsafe"
 
-	"github.com/k0kubun/pp"
-
 	"github.com/Unknwon/com"
+	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
 	"github.com/rai-project/dlframework/framework/options"
 	"github.com/rai-project/tracer"
@@ -32,7 +31,6 @@ type Predictor struct {
 func New(ctx context.Context, opts ...options.Option) (*Predictor, error) {
 	span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_new")
 	defer span.Finish()
-
 	options := options.New(opts...)
 
 	var modelFiles []*C.char

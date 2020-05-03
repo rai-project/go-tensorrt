@@ -1,15 +1,12 @@
 build/*
-networks/*
 *.o
 *.so
-_fixtures
+*caffemodel
+*.prototxt
+synset.txt
 
 tmp
 tensorrt
 
 .vscode/cquery_cached_index
 main
-
-batch
-e.tmp
-batch_mlmodelscope

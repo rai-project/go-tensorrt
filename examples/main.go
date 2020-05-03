@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Unknwon/com"
+	sourcepath "github.com/GeertJohan/go-sourcepath"
 	"github.com/anthonynsimon/bild/imgio"
 	"github.com/anthonynsimon/bild/transform"
 	"github.com/k0kubun/pp"
@@ -17,7 +17,6 @@ import (
 	"github.com/rai-project/dlframework"
 	"github.com/rai-project/dlframework/framework/feature"
 	"github.com/rai-project/dlframework/framework/options"
-	"github.com/rai-project/downloadmanager"
 	cupti "github.com/rai-project/go-cupti"
 	"github.com/rai-project/go-tensorrt"
 	nvidiasmi "github.com/rai-project/nvidia-smi"
@@ -28,16 +27,13 @@ import (
 )
 
 var (
-	batchSize  = 1
-	model      = "resnet50"
-	shape      = []int{1, 3, 224, 224}
-	mean       = []float32{123.68, 116.779, 103.939}
-	scale      = []float32{1.0, 1.0, 1.0}
-	baseDir, _ = filepath.Abs("../../_fixtures")
-	imgPath    = filepath.Join(baseDir, "platypus.jpg")
-	graphURL   = "http://s3.amazonaws.com/store.carml.org/models/caffe/resnet50/ResNet-50-deploy.prototxt"
-	weightsURL = "http://s3.amazonaws.com/store.carml.org/models/caffe/resnet50/ResNet-50-model.caffemodel"
-	synsetURL  = "http://s3.amazonaws.com/store.carml.org/synsets/imagenet/synset.txt"
+	batchSize = 1
+	model     = "resnet50"
+	shape     = []int{1, 3, 224, 224}
+	mean      = []float32{123.68, 116.779, 103.939}
+	scale     = []float32{1.0, 1.0, 1.0}
+	baseDir   = filepath.Join(sourcepath.MustAbsoluteDir(), "_fixtures")
+	imgPath   = filepath.Join(baseDir, "platypus.jpg")
 )
 
 // convert go RGB Image to 1D normalized RGB array
@@ -71,22 +67,6 @@ func main() {
 	graph := filepath.Join(dir, model+".prototxt")
 	weights := filepath.Join(dir, model+".caffemodel")
 	synset := filepath.Join(dir, "synset.txt")
-
-	if !com.IsFile(graph) {
-		if _, _, err := downloadmanager.DownloadFile(graphURL, graph); err != nil {
-			panic(err)
-		}
-	}
-	if !com.IsFile(weights) {
-		if _, _, err := downloadmanager.DownloadFile(weightsURL, weights); err != nil {
-			panic(err)
-		}
-	}
-	if !com.IsFile(synset) {
-		if _, _, err := downloadmanager.DownloadFile(synsetURL, synset); err != nil {
-			panic(err)
-		}
-	}
 
 	img, err := imgio.Open(imgPath)
 	if err != nil {
@@ -213,7 +193,7 @@ func main() {
 	}
 
 	results := features[0]
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 1; i++ {
 		prediction := results[i]
 		pp.Println(prediction.Probability, prediction.GetClassification().GetIndex(), prediction.GetClassification().GetLabel())
 	}

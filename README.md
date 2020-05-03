@@ -19,18 +19,12 @@ go get -v github.com/rai-project/go-tensorrt
 
 The binding requires TensorRT and other Go packages.
 
-### TensorRT C Library
+### TensorRT
 
-**_Note_**: TensorRT currently only works in linux and requires GPU.
-
-The TensorRT C library is expected to be under `/opt/tensorrt`.
-
+TensorRT currently only works in linux and requires GPU.
 Please refer to [Installing TensorRT](https://docs.nvidia.com/deeplearning/sdk/tensorrt-install-guide/index.html) to install TensorRT on your system.
 
-- The default tensorrt installation path is `/opt/tensorrt` for linux.
-
-- The default CUDA path is `/usr/local/cuda`
-
+**_Note_**: TensorRT is expected to be installed in either the system path or `/opt/tensorrt`.
 See [lib.go](lib.go) for details.
 
 If you get an error about not being able to write to `/opt` then perform the following
@@ -98,34 +92,11 @@ export GODEBUG=cgocheck=0
 in your `~/.bashrc` or `~/.zshrc` file and then run either `source ~/.bashrc` or `source ~/.zshrc`
 
 
-## Examples
+## [Examples](examples)
 
-Examples of using the Go TensorRT binding to do model inference are under [examples](examples).
-
-### batch_mlmodelscope
-
-This example shows how to use the MLModelScope tracer to profile the inference.
-
+The example shows how to use the MLModelScope tracer to profile the inference.
 Refer to [Set up the external services](https://docs.mlmodelscope.org/installation/source/external_services/) to start the tracer.
 
-Then run the example by
-
-```
-  cd example/batch_mlmodelscope
-  go build
-  ./batch
-```
-
-Now you can go to `localhost:16686` to look at the trace of that inference.
-
-### batch_nvprof
-
-This example shows how to use nvprof to profile the inference. You need GPU and CUDA to run this example.
-
-```
-  cd example/batch_nvprof
-  go build
-  nvprof --profile-from-start off ./batch_nvprof
-```
-
+If running on GPU, you can use nvprof to verify the profiling result.
 Refer to [Profiler User's Guide](https://docs.nvidia.com/cuda/profiler-users-guide/index.html) for using nvprof.
+

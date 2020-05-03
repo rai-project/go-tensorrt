@@ -29,8 +29,6 @@ using namespace nvuffparser;
 using std::string;
 using json = nlohmann::json;
 
-#define DEBUG 0
-
 static bool has_error = false;
 static std::string error_string{""};
 
@@ -208,7 +206,9 @@ public:
     const auto data_type = engine.getBindingDataType(idx);
     const size_t num_elements =
         std::accumulate(begin(shape), end(shape), 1, std::multiplies<size_t>());
+#ifdef DEBUG
     std::cout << "shape = " << shape[0] << "\n";
+#endif
     switch (data_type) {
 #define DISPATCH_GET_OUTPUT(DType, CType)                                      \
   case DType:                                                                  \
@@ -233,7 +233,9 @@ public:
     }
     const auto byte_count = num_elements * element_byte_count;
     void *res_data = malloc(byte_count);
+#ifdef DEBUG
     std::cout << "byte_count = " << byte_count << "\n";
+#endif
     CHECK(cudaMemcpy(res_data, data_[idx], byte_count, cudaMemcpyDeviceToHost));
     return res_data;
   }
