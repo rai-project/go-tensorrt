@@ -28,15 +28,17 @@ import (
 )
 
 var (
-	batchSize  = 1
-	model      = "resnet50"
-	shape      = []int{1, 3, 224, 224}
-	mean       = []float32{123.68, 116.779, 103.939}
-	scale      = []float32{1.0, 1.0, 1.0}
+	batchSize = 8
+	model     = "inception-v4"
+	shape     = []int{1, 3, 299, 299}
+	// mean       = []float32{123.68, 116.779, 103.939}
+	mean  = []float32{128, 128, 128}
+	scale = []float32{128, 128, 128}
+	// scale      = []float32{1.0, 1.0, 1.0}
 	baseDir, _ = filepath.Abs("../../_fixtures")
 	imgPath    = filepath.Join(baseDir, "platypus.jpg")
-	graphURL   = "http://s3.amazonaws.com/store.carml.org/models/caffe/resnet50/ResNet-50-deploy.prototxt"
-	weightsURL = "http://s3.amazonaws.com/store.carml.org/models/caffe/resnet50/ResNet-50-model.caffemodel"
+	graphURL   = "http://s3.amazonaws.com/store.carml.org/models/caffe/inception-v4/deploy_inception-v4.prototxt"
+	weightsURL = "http://s3.amazonaws.com/store.carml.org/models/caffe/inception-v4/inception-v4.caffemodel"
 	synsetURL  = "http://s3.amazonaws.com/store.carml.org/synsets/imagenet/synset.txt"
 )
 
@@ -96,14 +98,10 @@ func main() {
 	height := shape[2]
 	width := shape[3]
 
-	var input []float32
-	for ii := 0; ii < batchSize; ii++ {
-		resized := transform.Resize(img, height, width, transform.Linear)
-		res, err := cvtRGBImageToNCHW1DArray(resized, mean, scale)
-		if err != nil {
-			panic(err)
-		}
-		input = append(input, res...)
+	resized := transform.Resize(img, height, width, transform.Linear)
+	input, err := cvtRGBImageToNCHW1DArray(resized, mean, scale)
+	if err != nil {
+		panic(err)
 	}
 
 	opts := options.New()
@@ -143,6 +141,7 @@ func main() {
 	}
 	defer predictor.Close()
 
+	pp.Println("input size:", len(input), "byte_count:", len(input)*4)
 	for ii := 0; ii < 3; ii++ {
 		err = predictor.Predict(ctx, input)
 		if err != nil {
