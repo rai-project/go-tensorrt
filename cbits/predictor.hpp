@@ -62,44 +62,63 @@ extern "C"
   X(TensorRT_Float, float)         \
   X(TensorRT_Double, double)
 
-  PredictorHandle
-  NewTensorRTPredictor(TensorRT_ModelFormat model_format, 
-                       char **model_files,
-                       TensorRT_DType model_datatype,
-                       char **input_layer_names, int32_t num_input_layer_names,
-                       char **output_layer_names, int32_t num_output_layer_names,
-                       int32_t batch_size);
+  PredictorHandle NewTensorRTCaffePredictor(char *deploy_file,
+                                            char *weights_file,
+                                            TensorRT_DType model_datatype,
+                                            char **input_layer_names, 
+                                            int32_t num_input_layer_names,
+                                            char **output_layer_names, 
+                                            int32_t num_output_layer_names,
+                                            int32_t batch_size);
 
-  void TenorRTPredictor_SetDevice(PredictorHandle pred, int32_t device);
+  PredictorHandle NewTensorRTUffPredictor(char *model_file, 
+                                          TensorRT_DType model_datatype,
+                                          int **input_shapes,
+                                          char **input_orders,
+                                          char **input_layer_names, 
+                                          int32_t num_input_layer_names,
+                                          char **output_layer_names, 
+                                          int32_t num_output_layer_names,
+                                          int32_t batch_size);
 
-  void TenorRTPredictor_AddInput(PredictorHandle pred, const char *name,
+  PredictorHandle NewTensorRTOnnxPredictor(char *model_file, 
+                                           TensorRT_DType model_datatype,
+                                           char **input_layer_names, 
+                                           int32_t num_input_layer_names,
+                                           char **output_layer_names, 
+                                           int32_t num_output_layer_names,
+                                           int32_t batch_size);
+
+  void TensorRTPredictor_SetDevice(PredictorHandle pred, int32_t device);
+
+  void TensorRTPredictor_AddInput(PredictorHandle pred, const char *name,
                                  TensorRT_DType dtype, void *data,
                                  size_t num_elements);
 
-  void TenorRTPredictor_AddOutput(PredictorHandle pred, const char *name,
+  void TensorRTPredictor_AddOutput(PredictorHandle pred, const char *name,
                                   TensorRT_DType dtype);
 
-  void TenorRTPredictor_Synchronize(PredictorHandle pred);
+  void TensorRTPredictor_Synchronize(PredictorHandle pred);
 
-  void TenorRTPredictor_Run(PredictorHandle pred);
+  void TensorRTPredictor_Run(PredictorHandle pred);
 
-  int TenorRTPredictor_GetNumOutputs(PredictorHandle pred);
+  int TensorRTPredictor_GetNumOutputs(PredictorHandle pred);
 
-  void *TenorRTPredictor_GetOutput(PredictorHandle pred, const char *name,
+  void *TensorRTPredictor_GetOutput(PredictorHandle pred, const char *name,
                                    int32_t *ndims, int32_t **dims);
 
-  bool TenorRTPredictor_HasError(PredictorHandle pred);
+  bool TensorRTPredictor_HasError(PredictorHandle pred);
 
-  const char *TenorRTPredictor_GetLastError(PredictorHandle pred);
+  const char *TensorRTPredictor_GetLastError(PredictorHandle pred);
 
-  void TenorRTPredictor_Delete(PredictorHandle pred);
+  void TensorRTPredictor_Delete(PredictorHandle pred);
 
-  void TenorRTPredictor_StartProfiling(PredictorHandle pred, const char *name,
+  void TensorRTPredictor_StartProfiling(PredictorHandle pred, const char *name,
                                        const char *metadata);
 
-  void TenorRTPredictor_EndProfiling(PredictorHandle pred);
+  void TensorRTPredictor_EndProfiling(PredictorHandle pred);
 
-  char *TenorRTPredictor_ReadProfiling(PredictorHandle pred);
+  char *TensorRTPredictor_ReadProfiling(PredictorHandle pred);
 
   void TensoRT_Init();
 
