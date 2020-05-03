@@ -318,8 +318,6 @@ DataType get_blob_data_type(TensorRT_DType model_datatype) {
   default:
     throw std::runtime_error("invalid model datatype");
   }
-<<<<<<< HEAD
-=======
   return blob_data_type;
 }
 
@@ -342,116 +340,35 @@ PredictorHandle NewTensorRTCaffePredictor(char *deploy_file,
         std::string("cannot create tensorrt builder for ") + deploy_file;
     throw std::runtime_error(err);
   }
-  if (model_format == TensorRT_CaffeFormat) {
-      auto parser = nvcaffeparser1::createCaffeParser();
-      if (parser == nullptr) {
-        std::string err =
-            std::string("cannot create tensorrt caffe parser for ") + model_files[1];
-      }
-
-      parser->parse(model_files[0], model_files[1], *network, blob_data_type);
-
-      for (int ii = 0; ii < num_output_layer_names; ii++) {
-        network->markOutput(*blobNameToTensor->find(output_layer_names[ii]));
-  } else if (model_format == TensorRT_OnnxFormat) {
-      auto parser = nvonnxparser::createParser(network, gLogger);
-      auto parser = nvuffparser::createUffParser();
-  } else {
-  }
-
-  builder_config->setMaxWorkspaceSize(36 << 20);
-  builder_config->setFlag(BuilderFlag::kGPU_FALLBACK);
-  if (blob_data_type == DataType::kINT8) {
-    builder_config->setFlag(BuilderFlag::kINT8);
-  if (blob_data_type == DataType::kHALF) {
-    builder_config->setFlag(BuilderFlag::kFP16);
-
-  ICudaEngine *engine = builder->buildCudaEngine(*network);
-  network->destroy();
-  // parser->destroy();
-  IHostMemory *trtModelStream = engine->serialize();
-
-  builder->destroy();
-
-  // Deserialize the engine
-  ICudaEngine *runtime_engine = runtime->deserializeCudaEngine(
-
-  IExecutionContext *context = runtime_engine->createExecutionContext();
-  trtModelStream->destroy();
-  std::cout << "hahahahahhahahahahhahhhhhhhhhhhhhhhhhh" << std::endl;
-                                 output_layer_names_vec, batch_size);
-
-
-  END_C_DEFINION(nullptr);
-}
-
-nvuffparser::UffInputOrder create_uff_input_order(char *input_order) {
-  nvuffparser::UffInputOrder order;
-  if (input_order == "NCHW") {
-    order = UffInputOrder::kNCHW;
-  } else if (input_order == "NHWC") {
-    order = UffInputOrder::kNHWC;
-  } else if (input_order == "NC") {
-    order = UffInputOrder::kNC;
-  } else {
-    throw std::runtime_error("unsupported input order");
-  }
-  return order;
-}
-
-Dims create_uff_input_dims(int *input_shape) {
-  Dims3 dims = Dims3(input_shape[0], input_shape[1], input_shape[2]);
-  return dims;
-}
-
-PredictorHandle NewTensorRTUffPredictor(char *model_file, 
-                                        TensorRT_DType model_datatype,
-                                        int **input_shapes,
-                                        char **input_orders,
-                                        char **input_layer_names, 
-                                        int32_t num_input_layer_names,
-                                        char **output_layer_names, 
-                                        int32_t num_output_layer_names,
-                                        int32_t batch_size) {
-
-  START_C_DEFINION();
-
-  // Create the builder
-  IBuilder *builder = createInferBuilder(gLogger);
-  if (builder == nullptr) {
-    std::string err =
-        std::string("cannot create tensorrt builder for ") + model_file;
-    throw std::runtime_error(err);
-  }
   IBuilderConfig* builder_config = builder->createBuilderConfig();
   INetworkDefinition *network = builder->createNetwork();
   // builder->setDebugSync(true);
+
   DataType blob_data_type = get_blob_data_type(model_datatype);
 
   // Parse the caffe model to populate the network, then set the outputs
   // Create the parser according to the specified model format.
-  auto parser = nvuffparser::createUffParser();
+  auto parser = nvcaffeparser1::createCaffeParser();
   if (parser == nullptr) {
     std::string err =
-        std::string("cannot create tensorrt uff parser for ") + model_file;
+        std::string("cannot create tensorrt caffe parser for ") + deploy_file;
     throw std::runtime_error(err);
   }
+
+  const IBlobNameToTensor *blobNameToTensor =
+  parser->parse(deploy_file, weights_file, *network, blob_data_type);
 
   std::vector<std::string> input_layer_names_vec{};
   for (int ii = 0; ii < num_input_layer_names; ii++) {
     input_layer_names_vec.emplace_back(input_layer_names[ii]);
-    Dims input_dims = create_uff_input_dims(input_shapes[ii]);
-    UffInputOrder input_order = create_uff_input_order(input_orders[ii]);
-    parser->registerInput(input_layer_names[ii], input_dims, input_order);
   }
 
   std::vector<std::string> output_layer_names_vec{};
   for (int ii = 0; ii < num_output_layer_names; ii++) {
     output_layer_names_vec.emplace_back(output_layer_names[ii]);
-    parser->registerOutput(output_layer_names[ii]);
+    network->markOutput(*blobNameToTensor->find(output_layer_names[ii]));
   }
 
-  parser->parse(model_file, *network, blob_data_type);
   builder->setMaxBatchSize(batch_size);
   builder_config->setMaxWorkspaceSize(36 << 20);
   builder_config->setFlag(BuilderFlag::kGPU_FALLBACK);
@@ -462,6 +379,111 @@ PredictorHandle NewTensorRTUffPredictor(char *model_file,
   if (blob_data_type == DataType::kHALF) {
     builder_config->setFlag(BuilderFlag::kFP16);
   }
+
+  ICudaEngine *engine = builder->buildCudaEngine(*network);
+
+  network->destroy();
+  parser->destroy();
+
+  IHostMemory *trtModelStream = engine->serialize();
+
+  engine->destroy();
+  builder->destroy();
+
+  IRuntime *runtime = createInferRuntime(gLogger);
+  // Deserialize the engine
+  ICudaEngine *runtime_engine = runtime->deserializeCudaEngine(
+      trtModelStream->data(), trtModelStream->size(), nullptr);
+
+  IExecutionContext *context = runtime_engine->createExecutionContext();
+
+  trtModelStream->destroy();
+  std::cout << "hahahahahhahahahahhahhhhhhhhhhhhhhhhhh" << std::endl;
+  auto predictor = new Predictor(context, input_layer_names_vec,
+                                 output_layer_names_vec, batch_size);
+
+  return (PredictorHandle)predictor;
+
+  END_C_DEFINION(nullptr);
+}
+
+// nvuffparser::UffInputOrder create_uff_input_order(char *input_order) {
+//   nvuffparser::UffInputOrder order;
+//   if (input_order == "NCHW") {
+//     order = UffInputOrder::kNCHW;
+//   } else if (input_order == "NHWC") {
+//     order = UffInputOrder::kNHWC;
+//   } else if (input_order == "NC") {
+//     order = UffInputOrder::kNC;
+//   } else {
+//     throw std::runtime_error("unsupported input order");
+//   }
+//   return order;
+// }
+
+// Dims create_uff_input_dims(int *input_shape) {
+//   Dims3 dims = Dims3(input_shape[0], input_shape[1], input_shape[2]);
+//   return dims;
+// }
+
+// PredictorHandle NewTensorRTUffPredictor(char *model_file, 
+//                                         TensorRT_DType model_datatype,
+//                                         int **input_shapes,
+//                                         char **input_orders,
+//                                         char **input_layer_names, 
+//                                         int32_t num_input_layer_names,
+//                                         char **output_layer_names, 
+//                                         int32_t num_output_layer_names,
+//                                         int32_t batch_size) {
+
+//   START_C_DEFINION();
+
+//   // Create the builder
+//   IBuilder *builder = createInferBuilder(gLogger);
+//   if (builder == nullptr) {
+//     std::string err =
+//         std::string("cannot create tensorrt builder for ") + model_file;
+//     throw std::runtime_error(err);
+//   }
+//   IBuilderConfig* builder_config = builder->createBuilderConfig();
+//   INetworkDefinition *network = builder->createNetwork();
+//   // builder->setDebugSync(true);
+//   DataType blob_data_type = get_blob_data_type(model_datatype);
+
+//   // Parse the caffe model to populate the network, then set the outputs
+//   // Create the parser according to the specified model format.
+//   auto parser = nvuffparser::createUffParser();
+//   if (parser == nullptr) {
+//     std::string err =
+//         std::string("cannot create tensorrt uff parser for ") + model_file;
+//     throw std::runtime_error(err);
+//   }
+
+//   std::vector<std::string> input_layer_names_vec{};
+//   for (int ii = 0; ii < num_input_layer_names; ii++) {
+//     input_layer_names_vec.emplace_back(input_layer_names[ii]);
+//     Dims input_dims = create_uff_input_dims(input_shapes[ii]);
+//     UffInputOrder input_order = create_uff_input_order(input_orders[ii]);
+//     parser->registerInput(input_layer_names[ii], input_dims, input_order);
+//   }
+
+//   std::vector<std::string> output_layer_names_vec{};
+//   for (int ii = 0; ii < num_output_layer_names; ii++) {
+//     output_layer_names_vec.emplace_back(output_layer_names[ii]);
+//     parser->registerOutput(output_layer_names[ii]);
+//   }
+
+//   parser->parse(model_file, *network, blob_data_type);
+//   builder->setMaxBatchSize(batch_size);
+//   builder_config->setMaxWorkspaceSize(36 << 20);
+//   builder_config->setFlag(BuilderFlag::kGPU_FALLBACK);
+
+//   if (blob_data_type == DataType::kINT8) {
+//     builder_config->setFlag(BuilderFlag::kINT8);
+//   }
+//   if (blob_data_type == DataType::kHALF) {
+//     builder_config->setFlag(BuilderFlag::kFP16);
+//   }
 
 //   ICudaEngine *engine = builder->buildCudaEngine(*network);
 
@@ -589,11 +611,7 @@ void TensorRTPredictor_AddInput(PredictorHandle predictor_handle,
   END_C_DEFINION();
 }
 
-<<<<<<< HEAD
-void TenorRTPredictor_AddOutput(PredictorHandle predictor_handle,
-=======
 void TensorRTPredictor_AddOutput(PredictorHandle predictor_handle,
->>>>>>> master
                                 const char *name, TensorRT_DType dtype) {
   START_C_DEFINION();
   auto predictor = get_predictor_from_handle(predictor_handle);
@@ -610,11 +628,7 @@ void TensorRTPredictor_AddOutput(PredictorHandle predictor_handle,
   END_C_DEFINION();
 }
 
-<<<<<<< HEAD
-void TenorRTPredictor_Synchronize(PredictorHandle predictor_handle) {
-=======
 void TensorRTPredictor_Synchronize(PredictorHandle predictor_handle) {
->>>>>>> master
   START_C_DEFINION();
   auto predictor = get_predictor_from_handle(predictor_handle);
   CHECK(predictor->synchronize());
@@ -716,6 +730,6 @@ char *TensorRTPredictor_ReadProfiling(PredictorHandle pred) {
   END_C_DEFINION(nullptr);
 }
 
-void TensoRT_Init() { initLibNvInferPlugins(&gLogger, ""); }
+void TensorRT_Init() { initLibNvInferPlugins(&gLogger, ""); }
 
 #endif // __linux__
