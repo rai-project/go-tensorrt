@@ -67,28 +67,57 @@ func New(ctx context.Context, opts ...options.Option) (*Predictor, error) {
 
 	modelFileString := C.CString(modelFile)
 	defer C.free(unsafe.Pointer(modelFileString))
-	var weightsFileString *C.char
+
+	var handle C.PredictorHandle
+
 	format := ClassifyModelFormat(modelFile)
+	pp.Println(modelFile)
+	pp.Println(format)
 	if format == ModelFormatCaffe {
+		pp.Println("I get here")
 		weightsFile := string(options.Weights())
 		if !com.IsFile(weightsFile) {
 			return nil, errors.Errorf("file %s not found", weightsFile)
 		}
-		weightsFileString = C.CString(weightsFile)
+		weightsFileString := C.CString(weightsFile)
 		defer C.free(unsafe.Pointer(weightsFileString))
+		handle = C.NewTensorRTCaffePredictor(
+			modelFileString,
+			weightsFileString,
+			C.TensorRT_DType(Float),
+			(**C.char)(&cInputNodes[0]),
+			C.int32_t(len(inputNodes)),
+			(**C.char)(&cOutputNodes[0]),
+			C.int32_t(len(outputNodes)),
+			C.int32_t(options.BatchSize()),
+		)
+	} else if format == ModelFormatUff {
+		cInputShapes := makeCIntArray(inputNodes)
+		defer deleteCIntArray(cInputShapes)
+
+		handle = C.NewTensorRTUffPredictor(
+			modelFileString,
+			C.TensorRT_DType(Float),
+			(**C.int)(&cInputShapes[0]),
+			(**C.char)(&cInputNodes[0]),
+			C.int32_t(len(inputNodes)),
+			(**C.char)(&cOutputNodes[0]),
+			C.int32_t(len(outputNodes)),
+			C.int32_t(options.BatchSize()),
+		)
+	} else if format == ModelFormatOnnx {
+		handle = C.NewTensorRTOnnxPredictor(
+			modelFileString,
+			C.TensorRT_DType(Float),
+			(**C.char)(&cInputNodes[0]),
+			C.int32_t(len(inputNodes)),
+			(**C.char)(&cOutputNodes[0]),
+			C.int32_t(len(outputNodes)),
+			C.int32_t(options.BatchSize()),
+		)
 	}
 
-	handle := C.NewTensorRTCaffePredictor(
-		modelFileString,
-		weightsFileString,
-		C.TensorRT_DType(Float),
-		(**C.char)(&cInputNodes[0]),
-		C.int32_t(len(inputNodes)),
-		(**C.char)(&cOutputNodes[0]),
-		C.int32_t(len(outputNodes)),
-		C.int32_t(options.BatchSize()),
-	)
-
+	pp.Println("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 	pred := &Predictor{
 		handle:      handle,
 		inputNodes:  inputNodes,
@@ -112,6 +141,20 @@ func makeCStringArray(nds []options.Node) []*C.char {
 }
 
 func deleteCStringArray(strs []*C.char) {
+	for ii := range strs {
+		C.free(unsafe.Pointer(strs[ii]))
+	}
+}
+
+func makeCIntArray(nds []options.Node) []*C.int {
+	res := make([]*C.int, len(nds))
+	for ii, nd := range nds {
+		res[ii] = (*C.int)(unsafe.Pointer(&nd.Shape))
+	}
+	return res
+}
+
+func deleteCIntArray(strs []*C.int) {
 	for ii := range strs {
 		C.free(unsafe.Pointer(strs[ii]))
 	}

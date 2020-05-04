@@ -74,7 +74,6 @@ extern "C"
   PredictorHandle NewTensorRTUffPredictor(char *model_file, 
                                           TensorRT_DType model_datatype,
                                           int **input_shapes,
-                                          char **input_orders,
                                           char **input_layer_names, 
                                           int32_t num_input_layer_names,
                                           char **output_layer_names, 
