@@ -19,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rai-project/dlframework/framework/options"
 	"github.com/rai-project/tracer"
+	"github.com/rai-project/tracer/ctimer"
 )
 
 type Predictor struct {
@@ -119,6 +120,10 @@ func deleteCStringArray(strs []*C.char) {
 	}
 }
 
+func (p *Predictor) GetOptions() *options.Options {
+	return p.options
+}
+
 func (p *Predictor) Predict(ctx context.Context, data []float32) error {
 	if data == nil || len(data) < 1 {
 		return fmt.Errorf("intput data nil or empty")
@@ -132,6 +137,23 @@ func (p *Predictor) Predict(ctx context.Context, data []float32) error {
 
 	span, _ := tracer.StartSpanFromContext(ctx, tracer.MODEL_TRACE, "c_predict")
 	defer span.Finish()
+
+	if p.GetOptions().TraceLevel() >= tracer.FRAMEWORK_TRACE {
+		p.StartProfiling("predict", "")
+		defer func() {
+			p.EndProfiling()
+			profBuffer, err := p.ReadProfile()
+			if err != nil {
+				panic(err)
+			}
+
+			t, err := ctimer.New(profBuffer)
+			if err != nil {
+				panic(err)
+			}
+			t.Publish(ctx, tracer.FRAMEWORK_TRACE)
+		}()
+	}
 
 	C.TenorRTPredictor_AddInput(
 		p.handle,
