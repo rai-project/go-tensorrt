@@ -12,12 +12,14 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"strings"
 	"unsafe"
 
 	"github.com/Unknwon/com"
 	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
 	"github.com/rai-project/dlframework/framework/options"
+	cupti "github.com/rai-project/go-cupti"
 	"github.com/rai-project/tracer"
 	"github.com/rai-project/tracer/ctimer"
 )
@@ -27,6 +29,7 @@ type Predictor struct {
 	inputNodes  []options.Node
 	outputNodes []options.Node
 	options     *options.Options
+	cu          *cupti.CUPTI
 }
 
 func New(ctx context.Context, opts ...options.Option) (*Predictor, error) {
@@ -155,6 +158,11 @@ func (p *Predictor) Predict(ctx context.Context, data []float32) error {
 		}()
 	}
 
+	err := p.cuptiStart(ctx)
+	if err != nil {
+		return err
+	}
+
 	C.TenorRTPredictor_AddInput(
 		p.handle,
 		cnamei,
@@ -171,6 +179,9 @@ func (p *Predictor) Predict(ctx context.Context, data []float32) error {
 
 	C.TenorRTPredictor_Run(p.handle)
 	C.TenorRTPredictor_Synchronize(p.handle)
+
+	p.cuptiClose()
+
 	return nil
 }
 
@@ -250,4 +261,35 @@ func (p *Predictor) ReadProfile() (string, error) {
 
 func dummyPP() {
 	pp.Println("dummy")
+}
+
+func (p *Predictor) cuptiStart(ctx context.Context) error {
+	opts := p.GetOptions()
+	if !opts.UsesGPU() || opts.TraceLevel() < tracer.SYSTEM_LIBRARY_TRACE {
+		return nil
+	}
+
+	metrics := []string{}
+	if opts.GPUMetrics() != "" {
+		metrics = strings.Split(opts.GPUMetrics(), ",")
+	}
+
+	cu, err := cupti.New(cupti.Context(ctx),
+		cupti.SamplingPeriod(0),
+		cupti.Metrics(metrics),
+	)
+	if err != nil {
+		return err
+	}
+	p.cu = cu
+	return nil
+}
+
+func (p *Predictor) cuptiClose() {
+	if p.cu == nil {
+		return
+	}
+	p.cu.Wait()
+	p.cu.Close()
+	p.cu = nil
 }
